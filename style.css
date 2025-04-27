@@ -671,7 +671,7 @@ footer {
     margin-bottom: 15px;
     padding-left: 30px;
     position: relative;
-    color: var(--secondary-color);
+    color: var(--dark-text);
     font-size: 1em;
     line-height: 1.5;
 }

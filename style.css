@@ -1,0 +1,640 @@
+/* General Styles - Nu Edge Theme */
+:root {
+    --primary-color: #222; /* Slightly darker primary */
+    --secondary-color: #666; /* Adjusted secondary */
+    --accent-color: #444; /* Adjusted accent */
+    --light-gray: #f8f8f8; /* Lighter gray background */
+    --border-color: #e0e0e0; /* Softer border */
+    --white: #fff;
+    --header-height: 80px;
+}
+
+body {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    color: var(--secondary-color);
+    line-height: 1.75; /* Increased for readability */
+    font-size: 16px; /* Slightly larger base font */
+    background-color: var(--white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    width: 90%;
+    max-width: 1140px; /* Slightly adjusted max-width */
+    margin: 0 auto;
+}
+
+a {
+    text-decoration: none;
+    color: var(--accent-color);
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-color);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Lato', sans-serif;
+    margin-top: 0;
+    margin-bottom: 1.2rem; /* Adjusted heading margin */
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1.3;
+}
+
+h2 {
+    font-size: 2.2em; /* Adjusted H2 size */
+}
+
+h3 {
+    font-size: 1.6em; /* Adjusted H3 size */
+}
+
+section {
+    padding: 100px 0; /* Increased section padding */
+    overflow: hidden; /* Prevent horizontal scrollbars from animations */
+}
+
+/* Header - Simplified Nu Edge Style */
+header {
+    background-color: rgba(255, 255, 255, 0.9); /* Start slightly transparent */
+    padding: 0; /* Remove padding, rely on height */
+    border-bottom: 1px solid transparent; /* Start with transparent border */
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    backdrop-filter: blur(5px); /* Subtle blur effect */
+    -webkit-backdrop-filter: blur(5px);
+}
+
+header.scrolled {
+    background-color: var(--white);
+    border-bottom-color: var(--border-color);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Wolf PM Logo adapted */
+.logo {
+    font-family: 'Lato', sans-serif;
+    font-size: 1.8em; /* Slightly larger */
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.logo .logo-w {
+    color: var(--accent-color); /* Changed red to dark gray */
+    border: 2px solid var(--accent-color); /* Changed red border */
+    padding: 1px 4px; /* Adjusted padding */
+    margin-right: 5px;
+    font-weight: 700;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center; /* Vertically center nav items */
+}
+
+nav ul li {
+    margin-left: 30px; /* Increased spacing */
+}
+
+nav ul li a {
+    color: var(--secondary-color); /* Match body gray */
+    font-weight: 700; /* Bold like Nu Edge */
+    font-size: 14px; /* Match Nu Edge font size */
+    text-transform: uppercase; /* Uppercase like Nu Edge */
+    letter-spacing: 1px;
+    padding-bottom: 31px; /* Space for highlight bar */
+    padding-top: 31px;
+    border-bottom: 3px solid transparent; /* For hover effect */
+    transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+nav ul li a:hover,
+nav ul li a.search-icon:hover {
+    color: var(--primary-color); /* Darker gray on hover */
+    border-bottom-color: var(--accent-color); /* Gray highlight bar like Nu Edge */
+}
+
+nav ul li a.search-icon {
+    font-size: 1.2em;
+    padding-bottom: 0; /* Remove padding for icon */
+    padding-top: 0;
+    border-bottom: none;
+}
+
+/* Hero Section */
+.hero {
+    background: no-repeat center center/cover;
+    height: 85vh; /* Slightly shorter than full height like Nu Edge */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--white);
+    position: relative;
+    padding: 0;
+    margin-top: var(--header-height);
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6));
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 900px;
+    padding: 0 20px;
+}
+
+.hero h1 {
+    font-size: 4em;
+    margin-bottom: 20px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.1;
+    text-transform: none;
+}
+
+.hero .divider {
+    width: 80px;
+    height: 4px;
+    background-color: var(--white);
+    margin: 25px auto;
+    border: none;
+    opacity: 0.9;
+}
+
+.hero h2 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: 1px;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+.hero p {
+    font-size: 1.2em;
+    margin-bottom: 35px;
+    color: rgba(255, 255, 255, 0.95);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-buttons {
+    margin-top: 40px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+/* Hero Buttons */
+.btn.btn-hero {
+    background-color: var(--white);
+    color: var(--primary-color);
+    border: none;
+    padding: 15px 30px;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.btn.btn-hero:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Trusted Legacy Section - Adapting Nu Edge style */
+.trusted-legacy {
+    background-color: var(--white); /* White background */
+    text-align: center;
+    border-bottom: 1px solid var(--border-color); /* Add border */
+}
+
+.trusted-legacy h2 {
+    color: var(--primary-color);
+    font-size: 32px; /* Larger heading */
+    margin-bottom: 25px;
+}
+
+.trusted-legacy p {
+    max-width: 800px;
+    margin: 0 auto 40px auto;
+    color: var(--secondary-color); /* Match body gray */
+    line-height: 1.8;
+}
+
+.quick-links {
+    margin-top: 50px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 50px;
+}
+
+.quick-links h3 {
+    margin-bottom: 25px;
+    color: var(--accent-color);
+    font-size: 1.2em;
+    font-weight: 700;
+}
+
+/* Base Button Style */
+.btn {
+    display: inline-block;
+    background-color: var(--accent-color);
+    color: var(--white);
+    padding: 14px 32px; /* Increased padding */
+    border: 1px solid transparent; /* Add border for consistency */
+    border-radius: 5px; /* Slightly rounded corners */
+    margin: 5px 10px;
+    font-weight: 600; /* Adjusted weight */
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px; /* Adjusted size */
+    text-align: center;
+}
+
+.btn:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    color: var(--white);
+}
+
+/* Services Spotlights Section - Adapting Nu Edge */
+.services-spotlights {
+    padding: 0;
+}
+
+/* Spotlight Grid */
+.neighborhood-spotlights {
+    background-color: var(--light-gray);
+    padding: 80px 0;
+}
+
+.spotlight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-top: 40px;
+}
+
+.spotlight {
+    background: no-repeat center center/cover;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    position: relative;
+    color: var(--white);
+    border-radius: 0;
+    overflow: hidden;
+    padding: 30px 20px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.spotlight:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.spotlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.7));
+    z-index: 1;
+    transition: background 0.3s ease;
+}
+
+.spotlight:hover::before {
+    background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.8));
+}
+
+.spotlight > * {
+    position: relative;
+    z-index: 2;
+}
+
+.spotlight h3 {
+    font-size: 1.8em;
+    margin-bottom: 5px;
+    color: var(--white);
+    font-weight: 600;
+}
+
+.spotlight h4 {
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.btn.btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--white);
+    color: var(--white);
+    padding: 12px 25px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn.btn-outline:hover {
+    background-color: var(--white);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+/* Service Cards */
+.service-card {
+    background-color: var(--white);
+    padding: 0; /* Remove padding, apply to content */
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.07); /* Softer shadow */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 8px; /* Match spotlight */
+    overflow: hidden; /* Keep image contained */
+}
+
+.service-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.service-card img {
+    width: 100%;
+    height: 220px; /* Adjusted height */
+    object-fit: cover;
+    margin-bottom: 0; /* Remove bottom margin */
+    border-radius: 0; /* Remove radius, container handles it */
+    display: block; /* Remove potential whitespace */
+}
+
+.service-card-content {
+    padding: 30px;
+}
+
+.service-card h3 {
+    font-size: 1.4em; /* Adjusted size */
+    margin-bottom: 10px;
+}
+
+.service-card p {
+    margin-bottom: 25px;
+    color: var(--secondary-color);
+    font-size: 0.95em;
+}
+
+/* Footer - Nu Edge Style */
+footer {
+    background-color: var(--primary-color);
+    color: rgba(255, 255, 255, 0.7); /* Softer white text */
+    padding: 80px 0 40px;
+    font-size: 0.95em;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap; /* Allow wrapping */
+    gap: 40px; /* Add gap between items */
+    margin-bottom: 50px;
+}
+
+.footer-info {
+    flex-basis: 250px; /* Give info a base width */
+}
+
+.footer-info h3 {
+    color: var(--white);
+    margin-bottom: 15px;
+    font-size: 1.3em;
+}
+
+.footer-info p {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+.footer-nav {
+    flex-grow: 1; /* Allow nav to take space */
+    text-align: right;
+}
+
+.footer-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 15px 25px; /* Row and column gap */
+}
+
+.footer-nav ul li {
+    margin-bottom: 0; /* Remove bottom margin */
+}
+
+.footer-nav ul li a {
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.3s ease;
+    font-weight: 500;
+}
+
+.footer-nav ul li a:hover {
+    color: var(--white);
+}
+
+.copyright {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9em;
+    margin-top: 40px; /* Ensure spacing */
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 30px;
+}
+
+/* Scroll Animation Styles */
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s cubic-bezier(0.165, 0.84, 0.44, 1),
+                transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+    will-change: opacity, transform;
+}
+
+.animate-on-scroll.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered animations */
+.spotlight-grid .animate-on-scroll:nth-child(1) { transition-delay: 0.1s; }
+.spotlight-grid .animate-on-scroll:nth-child(2) { transition-delay: 0.2s; }
+.spotlight-grid .animate-on-scroll:nth-child(3) { transition-delay: 0.3s; }
+
+.services-grid .animate-on-scroll:nth-child(1) { transition-delay: 0.1s; }
+.services-grid .animate-on-scroll:nth-child(2) { transition-delay: 0.2s; }
+.services-grid .animate-on-scroll:nth-child(3) { transition-delay: 0.3s; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header {
+        height: auto;
+        padding: 15px 0;
+    }
+
+    .hero {
+        height: 100vh;
+    }
+
+    .hero h1 {
+        font-size: 2.8em;
+    }
+
+    .hero h2 {
+        font-size: 1.4em;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .btn.btn-hero {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .spotlight {
+        min-height: 280px;
+    }
+
+    .spotlight h3 {
+        font-size: 1.6em;
+    }
+
+    .services-grid,
+    .spotlight-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .service-card img {
+        height: 200px;
+    }
+}
+
+/* Services Section */
+.services {
+    background-color: var(--white);
+    padding: 80px 0;
+}
+
+.services h2 {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.service-card {
+    background-color: var(--white);
+    padding: 0;
+    text-align: left;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.service-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.service-card img {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+    margin-bottom: 0;
+    display: block;
+}
+
+.service-card-content {
+    padding: 30px;
+}
+
+.service-card h3 {
+    font-size: 1.6em;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.service-card p {
+    margin-bottom: 25px;
+    color: var(--secondary-color);
+    line-height: 1.6;
+}
+
+.service-card .btn {
+    width: 100%;
+    text-align: center;
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    padding: 12px 0;
+}
+
+.service-card .btn:hover {
+    background-color: var(--primary-color);
+    color: var(--white);
+    transform: translateY(-2px);
+} 

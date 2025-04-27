@@ -732,87 +732,230 @@ footer {
 
 /* About Page Styles */
 .about-hero {
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 120px 0 80px;
-    margin-top: var(--header-height);
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('images/about-hero-bg.jpg') no-repeat center center/cover; /* Added background image */
+    height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    color: var(--white);
+    margin-top: var(--header-height);
 }
 
 .about-hero h1 {
-    color: var(--white);
     font-size: 3.5em;
+    margin-bottom: 20px;
+    color: var(--white);
+    font-weight: 700;
+}
+
+.hero-subtitle {
+    font-size: 1.4em;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0;
+    font-weight: 300;
+    letter-spacing: 1px;
+}
+
+.about-company {
+    padding: 80px 0;
+    background-color: var(--white);
+}
+
+.about-company h2 {
+    text-align: center;
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.about-company h2::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 3px;
+    background-color: var(--accent-color);
+    margin: 20px auto 0; /* Adjusted margin */
+}
+
+.about-content {
+    max-width: 800px;
+    margin: 0 auto 50px; /* Added bottom margin */
+    text-align: center;
+}
+
+.about-content p {
+    font-size: 1.1em;
+    line-height: 1.8;
+    color: var(--secondary-color);
     margin-bottom: 20px;
 }
 
-.about-hero p {
-    font-size: 1.2em;
-    opacity: 0.9;
-    max-width: 600px;
-    margin: 0 auto;
+/* Kept values grid styles, adjusted margin */
+.values-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 40px; /* Can adjust if needed */
+    max-width: 1000px; /* Optional: constrain width */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.value-card {
+    background: var(--light-gray); /* Changed background slightly */
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Adjusted shadow */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+}
+
+.value-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.value-card h3 {
+    color: var(--primary-color);
+    font-size: 1.4em;
+    margin-bottom: 15px;
+}
+
+.value-card p {
+    color: var(--secondary-color);
+    line-height: 1.6;
 }
 
 .team-members {
-    padding: 100px 0;
-    background-color: var(--white);
+    background-color: var(--light-gray);
+    padding: 80px 0;
+}
+
+.team-members h2 {
+    text-align: center;
+    margin-bottom: 50px;
 }
 
 .team-member {
     display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 50px;
-    margin-bottom: 80px;
-    align-items: start;
-}
-
-.team-member:last-child {
-    margin-bottom: 0;
+    grid-template-columns: 300px 1fr;
+    gap: 40px;
+    margin-bottom: 60px;
+    background: var(--white);
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .team-member-image {
     position: relative;
+    overflow: hidden;
+    border-radius: 8px;
 }
 
 .team-member-image img {
     width: 100%;
-    height: auto;
-    border-radius: 5px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
 }
 
 .team-member-image img:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-}
-
-.team-member-info h2 {
-    font-size: 2.4em;
-    margin-bottom: 10px;
-    color: var(--primary-color);
+    transform: scale(1.05);
 }
 
 .team-member-info h3 {
-    font-size: 1.2em;
-    color: var(--accent-color);
-    margin-bottom: 25px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: var(--primary-color);
+    font-size: 1.8em;
+    margin-bottom: 10px;
 }
 
-.team-member-bio {
+.position {
+    color: var(--accent-color);
     font-size: 1.1em;
-    line-height: 1.8;
-    color: var(--secondary-color);
+    margin-bottom: 20px;
+    font-weight: 600;
 }
 
 .team-member-bio p {
+    color: var(--secondary-color);
+    line-height: 1.8;
+    margin-bottom: 15px;
+}
+
+.cta-section {
+    background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('images/cta-bg.jpg') no-repeat center center/cover;
+    padding: 80px 0;
+    text-align: center;
+    color: var(--white);
+}
+
+.cta-section h2 {
+    color: var(--white);
+    font-size: 2.5em;
     margin-bottom: 20px;
 }
 
-.team-member-bio p:last-child {
-    margin-bottom: 0;
+.cta-section p {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+    opacity: 0.9;
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 15px 30px;
+    background-color: var(--white);
+    color: var(--primary-color);
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.cta-button:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 992px) {
+    .values-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .team-member {
+        grid-template-columns: 1fr;
+    }
+    
+    .team-member-image {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .about-hero h1 {
+        font-size: 2.5em;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2em;
+    }
+    
+    .values-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .value-card {
+        padding: 30px;
+    }
+    
+    .team-member {
+        padding: 30px;
+    }
+    
+    .cta-section h2 {
+        font-size: 2em;
+    }
 }
 
 /* Active Navigation Link */

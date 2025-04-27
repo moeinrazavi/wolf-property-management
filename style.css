@@ -728,4 +728,132 @@ footer {
     .category-card {
         padding: 30px 20px;
     }
+}
+
+/* About Page Styles */
+.about-hero {
+    background-color: var(--primary-color);
+    color: var(--white);
+    padding: 120px 0 80px;
+    margin-top: var(--header-height);
+    text-align: center;
+}
+
+.about-hero h1 {
+    color: var(--white);
+    font-size: 3.5em;
+    margin-bottom: 20px;
+}
+
+.about-hero p {
+    font-size: 1.2em;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.team-members {
+    padding: 100px 0;
+    background-color: var(--white);
+}
+
+.team-member {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 50px;
+    margin-bottom: 80px;
+    align-items: start;
+}
+
+.team-member:last-child {
+    margin-bottom: 0;
+}
+
+.team-member-image {
+    position: relative;
+}
+
+.team-member-image img {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.team-member-image img:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.team-member-info h2 {
+    font-size: 2.4em;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.team-member-info h3 {
+    font-size: 1.2em;
+    color: var(--accent-color);
+    margin-bottom: 25px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.team-member-bio {
+    font-size: 1.1em;
+    line-height: 1.8;
+    color: var(--secondary-color);
+}
+
+.team-member-bio p {
+    margin-bottom: 20px;
+}
+
+.team-member-bio p:last-child {
+    margin-bottom: 0;
+}
+
+/* Active Navigation Link */
+nav ul li a.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--accent-color);
+}
+
+/* Responsive Design for About Page */
+@media (max-width: 992px) {
+    .team-member {
+        grid-template-columns: 1fr 1.5fr;
+        gap: 30px;
+    }
+}
+
+@media (max-width: 768px) {
+    .about-hero {
+        padding: 100px 0 60px;
+    }
+
+    .about-hero h1 {
+        font-size: 2.8em;
+    }
+
+    .team-member {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 30px;
+    }
+
+    .team-member-image {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .team-member-info h2 {
+        font-size: 2em;
+    }
+
+    .team-member-info h3 {
+        font-size: 1.1em;
+    }
 } 

@@ -1446,8 +1446,24 @@ body.admin-mode .hero {
 .version-description {
     color: var(--text-color);
     font-size: 13px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     line-height: 1.4;
+}
+
+.version-details {
+    margin-bottom: 12px;
+}
+
+.version-details small {
+    color: #666;
+    font-size: 11px;
+}
+
+.no-versions {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 40px 20px;
 }
 
 .version-actions {

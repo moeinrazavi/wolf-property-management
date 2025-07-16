@@ -1,10 +1,7 @@
 console.log('Script loaded'); 
 
-// Admin credentials (in a real app, this would be server-side)
-const ADMIN_CREDENTIALS = {
-    username: 'admin',
-    password: 'admin123'
-};
+// Import Supabase database service
+import dbService from './supabase-client.js';
 
 // Global variables
 let isAdminLoggedIn = false;
@@ -14,10 +11,8 @@ let currentVersion = 0;
 let versionHistory = [];
 const MAX_VERSIONS = 10;
 
-// Version management
-const VERSION_STORAGE_KEY = 'wolf_pm_versions';
-const CHANGES_STORAGE_KEY = 'wolf_pm_changes';
-const CURRENT_VERSION_KEY = 'wolf_pm_current_version';
+// Get current page name
+const currentPage = window.location.pathname.split('/').pop() || 'index.html';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Header scroll effect
@@ -62,144 +57,87 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(element);
     });
 
-    // Load version history
-    loadVersionHistory();
+    // Load content from Supabase
+    loadContentFromDatabase();
     
-    // Apply saved changes on page load (before admin initialization)
-    applySavedChanges();
+    // Load version history from Supabase
+    loadVersionHistoryFromDatabase();
 
     // Admin System Initialization
     initializeAdminSystem();
-    
-    // Apply saved changes again after a brief delay to ensure DOM is ready
-    setTimeout(() => {
-        applySavedChanges();
-    }, 100);
 });
 
-// Version Management Functions
-function loadVersionHistory() {
+// Database Functions
+async function loadContentFromDatabase() {
     try {
-        const savedVersions = localStorage.getItem(VERSION_STORAGE_KEY);
-        const savedCurrentVersion = localStorage.getItem(CURRENT_VERSION_KEY);
+        console.log('Loading content from Supabase...');
+        const { content, error } = await dbService.getContent(currentPage);
         
-        if (savedVersions) {
-            versionHistory = JSON.parse(savedVersions);
+        if (error) {
+            console.error('Error loading content:', error);
+            return;
         }
         
-        if (savedCurrentVersion) {
-            currentVersion = parseInt(savedCurrentVersion);
+        // Apply content to the page
+        Object.keys(content).forEach(elementId => {
+            const contentMapping = dbService.getPageContentMapping(currentPage);
+            const elementInfo = contentMapping[elementId];
+            
+            if (elementInfo) {
+                const element = document.querySelector(elementInfo.selector);
+                if (element) {
+                    element.textContent = content[elementId];
+                    console.log(`Applied content: ${elementId} -> "${content[elementId]}"`);
+                }
+            }
+        });
+        
+        console.log('Content loaded successfully from database');
+    } catch (error) {
+        console.error('Error loading content from database:', error);
+    }
+}
+
+async function loadVersionHistoryFromDatabase() {
+    try {
+        console.log('Loading version history from Supabase...');
+        const { versions, error } = await dbService.getVersionHistory(currentPage);
+        
+        if (error) {
+            console.error('Error loading version history:', error);
+            versionHistory = [];
+            currentVersion = 0;
+            return;
         }
+        
+        versionHistory = versions;
+        currentVersion = versions.length > 0 ? versions[0].version_number : 0;
         
         console.log('Version history loaded:', versionHistory.length, 'versions');
     } catch (error) {
-        console.error('Error loading version history:', error);
+        console.error('Error loading version history from database:', error);
         versionHistory = [];
         currentVersion = 0;
     }
 }
 
 function saveVersionHistory() {
-    try {
-        localStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(versionHistory));
-        localStorage.setItem(CURRENT_VERSION_KEY, currentVersion.toString());
-    } catch (error) {
-        console.error('Error saving version history:', error);
-    }
+    // This function is no longer needed with Supabase
+    // Version history is stored in the database
+    console.log('saveVersionHistory() is deprecated - versions are stored in database');
 }
 
 function createNewVersion(changes, description = '') {
-    const timestamp = new Date().toISOString();
-    const version = {
-        id: currentVersion + 1,
-        timestamp: timestamp,
-        changes: changes,
-        description: description || `Version ${currentVersion + 1} - ${new Date().toLocaleString()}`,
-        page: window.location.pathname
-    };
-    
-    // Add to history
-    versionHistory.push(version);
-    
-    // Keep only the latest MAX_VERSIONS
-    if (versionHistory.length > MAX_VERSIONS) {
-        versionHistory = versionHistory.slice(-MAX_VERSIONS);
-    }
-    
-    currentVersion = version.id;
-    
-    // Save to localStorage
-    saveVersionHistory();
-    
-    // Update admin controls
-    updateVersionDisplay();
-    
-    console.log(`Created version ${version.id}: ${description}`);
-    console.log('Changes in this version:', Object.keys(changes).length);
-    
-    return version;
+    // This function is no longer needed with Supabase
+    // Versions are created directly in the database
+    console.log('createNewVersion() is deprecated - versions are created in database');
+    return null;
 }
 
+// This function is no longer needed with Supabase
+// All content is loaded directly from the database
 function applySavedChanges() {
-    try {
-        const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
-        if (savedChanges) {
-            const changes = JSON.parse(savedChanges);
-            let appliedCount = 0;
-            
-            console.log('Applying saved changes...', Object.keys(changes).length, 'changes to apply');
-            
-            // Apply changes to elements that exist
-            Object.keys(changes).forEach(elementId => {
-                const newContent = changes[elementId];
-                let applied = false;
-                
-                // Method 1: Try to find by exact element path
-                const elements = findElementsBySelector(elementId);
-                if (elements.length > 0) {
-                    elements[0].textContent = newContent;
-                    applied = true;
-                    appliedCount++;
-                }
-                
-                // Method 2: Try to find by content matching
-                if (!applied) {
-                    const contentMatches = findElementsByContent(newContent);
-                    if (contentMatches.length > 0) {
-                        contentMatches[0].textContent = newContent;
-                        applied = true;
-                        appliedCount++;
-                    }
-                }
-                
-                // Method 3: Find by selector type and update closest match
-                if (!applied) {
-                    const selectorType = extractSelectorType(elementId);
-                    if (selectorType) {
-                        const elements = document.querySelectorAll(selectorType);
-                        for (let element of elements) {
-                            if (isContentSimilar(element.textContent, newContent)) {
-                                element.textContent = newContent;
-                                applied = true;
-                                appliedCount++;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                if (applied) {
-                    console.log(`✅ Applied: "${newContent}"`);
-                } else {
-                    console.log(`❌ Could not apply: "${newContent}" for ${elementId}`);
-                }
-            });
-            
-            console.log(`Applied ${appliedCount}/${Object.keys(changes).length} saved changes`);
-        }
-    } catch (error) {
-        console.error('Error applying saved changes:', error);
-    }
+    console.log('applySavedChanges() is deprecated - content is loaded from database');
 }
 
 function findElementsBySelector(elementId) {
@@ -314,7 +252,7 @@ function initializeAdminSystem() {
     const saveCancel = document.getElementById('save-cancel');
 
     // Check if admin is already logged in
-    if (localStorage.getItem('adminLoggedIn') === 'true') {
+    if (dbService.isAuthenticated()) {
         loginAdmin();
     }
 
@@ -337,17 +275,32 @@ function initializeAdminSystem() {
     });
 
     // Admin login form submission
-    adminLoginForm.addEventListener('submit', (e) => {
+    adminLoginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('username').value;
+        const email = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
-        if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-            loginAdmin();
-            adminModal.style.display = 'none';
-            adminLoginForm.reset();
-        } else {
-            alert('Invalid credentials. Please try again.');
+        // Show loading state
+        const submitBtn = adminLoginForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Logging in...';
+        submitBtn.disabled = true;
+
+        try {
+            const { user, error } = await dbService.signIn(email, password);
+            
+            if (error) {
+                alert(`Login failed: ${error}`);
+            } else {
+                loginAdmin();
+                adminModal.style.display = 'none';
+                adminLoginForm.reset();
+            }
+        } catch (error) {
+            alert(`Login error: ${error.message}`);
+        } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
         }
     });
 
@@ -375,7 +328,6 @@ function initializeAdminSystem() {
 
 function loginAdmin() {
     isAdminLoggedIn = true;
-    localStorage.setItem('adminLoggedIn', 'true');
     
     // Show admin controls
     document.getElementById('admin-controls').style.display = 'block';
@@ -390,9 +342,9 @@ function loginAdmin() {
     console.log('Admin logged in successfully');
 }
 
-function logoutAdmin() {
+async function logoutAdmin() {
+    await dbService.signOut();
     isAdminLoggedIn = false;
-    localStorage.removeItem('adminLoggedIn');
     
     // Hide admin controls
     document.getElementById('admin-controls').style.display = 'none';
@@ -514,24 +466,8 @@ function makeElementEditable(element) {
     // Store original content
     const elementId = generateElementId(element);
     
-    // Check if there's a saved version of this content
-    const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
-    if (savedChanges) {
-        try {
-            const changes = JSON.parse(savedChanges);
-            if (changes[elementId]) {
-                // Apply saved content
-                element.textContent = changes[elementId];
-                originalContent[elementId] = changes[elementId];
-            } else {
-                originalContent[elementId] = element.innerHTML;
-            }
-        } catch (error) {
-            originalContent[elementId] = element.innerHTML;
-        }
-    } else {
-        originalContent[elementId] = element.innerHTML;
-    }
+    // Store original content (no longer using localStorage)
+    originalContent[elementId] = element.textContent;
     
     // Add editable class
     element.classList.add('editable-text');
@@ -653,28 +589,11 @@ function showSaveModal() {
     document.getElementById('save-modal').style.display = 'block';
 }
 
-function saveChanges() {
+async function saveChanges() {
     // Collect all changes from current editable elements
     const changes = {};
-    const allSavedChanges = getCurrentSavedChanges();
     
-    // First, save the CURRENT STATE (before any new changes) to version history
-    const currentState = {};
-    document.querySelectorAll('.editable-text').forEach(element => {
-        const elementId = element.getAttribute('data-editable-id');
-        if (elementId) {
-            // Save the current state (before changes) to version history
-            currentState[elementId] = originalContent[elementId] || element.textContent;
-        }
-    });
-    
-    // Create version history entry with the PREVIOUS state ONLY when save button is pressed
-    if (Object.keys(currentState).length > 0) {
-        const version = createNewVersion(currentState, `Previous state before save - ${new Date().toLocaleString()}`);
-        console.log('Saved previous state as version:', version.id);
-    }
-    
-    // Now collect the new changes
+    // Collect the new changes
     document.querySelectorAll('.editable-text').forEach(element => {
         const elementId = element.getAttribute('data-editable-id');
         if (elementId) {
@@ -684,42 +603,57 @@ function saveChanges() {
     });
     
     if (Object.keys(changes).length > 0) {
-        // Merge with existing saved changes
-        const mergedChanges = { ...allSavedChanges, ...changes };
+        // Show loading state
+        const saveButton = document.getElementById('save-changes-btn');
+        const originalText = saveButton.textContent;
+        saveButton.textContent = 'Saving...';
+        saveButton.disabled = true;
         
-        // Store changes permanently
-        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(mergedChanges));
-        
-        // Update original content for all elements
-        Object.keys(changes).forEach(elementId => {
-            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-            if (element) {
-                originalContent[elementId] = element.textContent;
+        try {
+            // Save to Supabase
+            const { version, error } = await dbService.saveContent(
+                currentPage, 
+                changes, 
+                `Manual save - ${new Date().toLocaleString()}`
+            );
+            
+            if (error) {
+                alert(`Save failed: ${error}`);
+                return;
             }
-        });
-        
-        // Apply changes immediately to ensure persistence
-        applyChangesToDOM(mergedChanges);
-        
-        hasUnsavedChanges = false;
-        updateSaveStatus();
-        
-        console.log('Changes applied and saved permanently');
-        console.log('Total saved changes:', Object.keys(mergedChanges).length);
-        alert(`Changes saved successfully!\nPrevious state saved to version history.\nChanges will persist across page refreshes.`);
+            
+            // Update original content for all elements
+            Object.keys(changes).forEach(elementId => {
+                const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+                if (element) {
+                    originalContent[elementId] = element.textContent;
+                }
+            });
+            
+            // Reload version history
+            await loadVersionHistoryFromDatabase();
+            
+            hasUnsavedChanges = false;
+            updateSaveStatus();
+            
+            console.log('Changes saved to database, version:', version);
+            alert(`Changes saved successfully as version ${version}!\nChanges are now permanent and visible to all users.`);
+            
+        } catch (error) {
+            alert(`Save error: ${error.message}`);
+        } finally {
+            saveButton.textContent = originalText;
+            saveButton.disabled = false;
+        }
     } else {
         alert('No changes to save.');
     }
 }
 
 function getCurrentSavedChanges() {
-    try {
-        const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
-        return savedChanges ? JSON.parse(savedChanges) : {};
-    } catch (error) {
-        console.error('Error reading saved changes:', error);
-        return {};
-    }
+    // This function is no longer needed with Supabase
+    // All changes are now stored in the database
+    return {};
 }
 
 function applyChangesToDOM(changes) {
@@ -790,17 +724,17 @@ function showVersionHistory() {
                 ${versionHistory.map(version => `
                     <div class="version-item">
                         <div class="version-header">
-                            <span class="version-number">Version ${version.id}</span>
-                            <span class="version-date">${new Date(version.timestamp).toLocaleString()}</span>
+                            <span class="version-number">Version ${version.version_number}</span>
+                            <span class="version-date">${new Date(version.created_at).toLocaleString()}</span>
                         </div>
                         <div class="version-description">${version.description}</div>
                         <div class="version-details">
                             <span class="version-changes">${Object.keys(version.changes).length} elements</span>
-                            <span class="version-page">${version.page}</span>
+                            <span class="version-page">${version.page_name}</span>
                         </div>
                         <div class="version-actions">
-                            <button class="version-restore-btn" data-version="${version.id}">Restore to This State</button>
-                            <button class="version-export-btn" data-version="${version.id}">Export This Version</button>
+                            <button class="version-restore-btn" data-version="${version.version_number}">Restore to This State</button>
+                            <button class="version-export-btn" data-version="${version.version_number}">Export This Version</button>
                         </div>
                     </div>
                 `).join('')}
@@ -818,9 +752,9 @@ function showVersionHistory() {
     
     // Restore version
     modal.querySelectorAll('.version-restore-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const versionId = parseInt(btn.getAttribute('data-version'));
-            restoreVersion(versionId);
+        btn.addEventListener('click', async () => {
+            const versionNumber = parseInt(btn.getAttribute('data-version'));
+            await restoreVersion(versionNumber);
             modal.remove();
         });
     });
@@ -834,47 +768,36 @@ function showVersionHistory() {
     });
 }
 
-function restoreVersion(versionId) {
-    const version = versionHistory.find(v => v.id === versionId);
+async function restoreVersion(versionNumber) {
+    const version = versionHistory.find(v => v.version_number === versionNumber);
     if (!version) return;
     
-    if (confirm(`Are you sure you want to restore to version ${versionId}? This will overwrite current changes.`)) {
-        // Apply the restored version changes
-        let restoredCount = 0;
-        Object.keys(version.changes).forEach(elementId => {
-            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-            if (element) {
-                element.textContent = version.changes[elementId];
-                originalContent[elementId] = version.changes[elementId];
-                restoredCount++;
+    if (confirm(`Are you sure you want to restore to version ${versionNumber}? This will overwrite current changes.`)) {
+        try {
+            // Restore from database
+            const { success, error } = await dbService.restoreVersion(currentPage, versionNumber);
+            
+            if (error) {
+                alert(`Restore failed: ${error}`);
+                return;
             }
-        });
-        
-        // Also apply to non-editable elements that might match
-        Object.keys(version.changes).forEach(elementId => {
-            const newContent = version.changes[elementId];
-            const matchingElements = findElementsByContent(newContent);
-            matchingElements.forEach(el => {
-                if (!el.classList.contains('editable-text')) {
-                    el.textContent = newContent;
-                }
-            });
-        });
-        
-        // Update the permanent storage with restored content
-        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(version.changes));
-        
-        // Update current version
-        currentVersion = versionId;
-        saveVersionHistory();
-        updateVersionDisplay();
-        
-        // Mark as having unsaved changes so user can save if they want
-        hasUnsavedChanges = true;
-        updateSaveStatus();
-        
-        console.log(`Restored ${restoredCount} elements to version ${versionId}`);
-        alert(`Successfully restored to version ${versionId}!\n\nNote: The restored state is now your current state. Click "Save Changes" to make it permanent.`);
+            
+            // Reload content from database
+            await loadContentFromDatabase();
+            
+            // Reload version history
+            await loadVersionHistoryFromDatabase();
+            
+            // Mark as having unsaved changes so user can save if they want
+            hasUnsavedChanges = true;
+            updateSaveStatus();
+            
+            console.log(`Restored to version ${versionNumber}`);
+            alert(`Successfully restored to version ${versionNumber}!\n\nNote: The restored state is now your current state. Click "Save Changes" to make it permanent.`);
+            
+        } catch (error) {
+            alert(`Restore error: ${error.message}`);
+        }
     }
 }
 

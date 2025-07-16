@@ -114,9 +114,8 @@ function createNewVersion(changes, description = '') {
         id: currentVersion + 1,
         timestamp: timestamp,
         changes: changes,
-        description: description || `Backup ${currentVersion + 1} - ${new Date().toLocaleString()}`,
-        page: window.location.pathname,
-        changeCount: Object.keys(changes).length
+        description: description || `Version ${currentVersion + 1} - ${new Date().toLocaleString()}`,
+        page: window.location.pathname
     };
     
     // Add to history
@@ -125,11 +124,9 @@ function createNewVersion(changes, description = '') {
     // Keep only the latest MAX_VERSIONS
     if (versionHistory.length > MAX_VERSIONS) {
         versionHistory = versionHistory.slice(-MAX_VERSIONS);
-        // Update currentVersion to reflect the oldest available version
-        currentVersion = version.id;
-    } else {
-        currentVersion = version.id;
     }
+    
+    currentVersion = version.id;
     
     // Save to localStorage
     saveVersionHistory();
@@ -138,6 +135,8 @@ function createNewVersion(changes, description = '') {
     updateVersionDisplay();
     
     console.log(`Created version ${version.id}: ${description}`);
+    console.log('Changes in this version:', Object.keys(changes).length);
+    
     return version;
 }
 
@@ -654,54 +653,44 @@ function showSaveModal() {
 }
 
 function saveChanges() {
-    // Get current saved state (this will be the "before" state for version history)
-    const currentSavedChanges = getCurrentSavedChanges();
+    // Collect all changes from current editable elements
+    const changes = {};
+    const allSavedChanges = getCurrentSavedChanges();
     
-    // Collect new changes from current editable elements
-    const newChanges = {};
-    let hasNewChanges = false;
-    
+    // First, save the CURRENT STATE (before any new changes) to version history
+    const currentState = {};
     document.querySelectorAll('.editable-text').forEach(element => {
         const elementId = element.getAttribute('data-editable-id');
         if (elementId) {
-            const currentText = element.textContent;
-            const originalText = originalContent[elementId];
-            const savedText = currentSavedChanges[elementId];
-            
-            // Check if this is actually a new change
-            if (currentText !== originalText || currentText !== savedText) {
-                newChanges[elementId] = currentText;
-                hasNewChanges = true;
-            } else {
-                // Keep existing saved content
-                newChanges[elementId] = savedText || currentText;
-            }
+            // Save the current state (before changes) to version history
+            currentState[elementId] = originalContent[elementId] || element.textContent;
         }
     });
     
-    if (hasNewChanges) {
-        // Save the CURRENT state as a version (before applying new changes)
-        // This allows users to revert back to this point
-        const versionToSave = { ...currentSavedChanges };
-        
-        // If this is the first save, include original content
-        if (Object.keys(currentSavedChanges).length === 0) {
-            document.querySelectorAll('.editable-text').forEach(element => {
-                const elementId = element.getAttribute('data-editable-id');
-                if (elementId && originalContent[elementId]) {
-                    versionToSave[elementId] = extractTextContent(originalContent[elementId]);
-                }
-            });
+    // Create version history entry with the PREVIOUS state
+    if (Object.keys(currentState).length > 0) {
+        const version = createNewVersion(currentState, `Previous state before save - ${new Date().toLocaleString()}`);
+        console.log('Saved previous state as version:', version.id);
+    }
+    
+    // Now collect the new changes
+    document.querySelectorAll('.editable-text').forEach(element => {
+        const elementId = element.getAttribute('data-editable-id');
+        if (elementId) {
+            // Save the new content
+            changes[elementId] = element.textContent;
         }
+    });
+    
+    if (Object.keys(changes).length > 0) {
+        // Merge with existing saved changes
+        const mergedChanges = { ...allSavedChanges, ...changes };
         
-        // Create new version with the state BEFORE changes
-        const version = createNewVersion(versionToSave, `Backup before save - ${new Date().toLocaleString()}`);
+        // Store changes permanently
+        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(mergedChanges));
         
-        // Now store the NEW changes as current state
-        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(newChanges));
-        
-        // Update original content for tracking
-        Object.keys(newChanges).forEach(elementId => {
+        // Update original content for all elements
+        Object.keys(changes).forEach(elementId => {
             const element = document.querySelector(`[data-editable-id="${elementId}"]`);
             if (element) {
                 originalContent[elementId] = element.textContent;
@@ -709,24 +698,17 @@ function saveChanges() {
         });
         
         // Apply changes immediately to ensure persistence
-        applyChangesToDOM(newChanges);
+        applyChangesToDOM(mergedChanges);
         
         hasUnsavedChanges = false;
         updateSaveStatus();
         
-        console.log('Previous state saved as version:', version.id);
-        console.log('New changes applied:', Object.keys(newChanges).length);
-        alert(`Changes saved successfully!\nPrevious state saved as version ${version.id} for backup.\nChanges will persist across page refreshes.`);
+        console.log('Changes applied and saved permanently');
+        console.log('Total saved changes:', Object.keys(mergedChanges).length);
+        alert(`Changes saved successfully!\nPrevious state saved to version history.\nChanges will persist across page refreshes.`);
     } else {
-        alert('No new changes to save.');
+        alert('No changes to save.');
     }
-}
-
-function extractTextContent(htmlContent) {
-    // Extract plain text from HTML content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
-    return tempDiv.textContent || tempDiv.innerText || '';
 }
 
 function getCurrentSavedChanges() {
@@ -792,22 +774,22 @@ function showVersionHistory() {
         <div class="version-history-content">
             <span class="version-close">&times;</span>
             <h3>Version History</h3>
+            <p class="version-info-text">Each version represents the state BEFORE changes were made, allowing you to revert to previous states.</p>
             <div class="version-list">
-                ${versionHistory.length === 0 ? 
-                    '<p class="no-versions">No versions saved yet. Make some changes and save to create your first version.</p>' :
-                    versionHistory.slice().reverse().map(version => `
+                ${versionHistory.map(version => `
                     <div class="version-item">
                         <div class="version-header">
-                            <span class="version-number">Backup #${version.id}</span>
+                            <span class="version-number">Version ${version.id}</span>
                             <span class="version-date">${new Date(version.timestamp).toLocaleString()}</span>
                         </div>
                         <div class="version-description">${version.description}</div>
                         <div class="version-details">
-                            <small>${version.changeCount || 0} content items • ${version.page || 'Unknown page'}</small>
+                            <span class="version-changes">${Object.keys(version.changes).length} elements</span>
+                            <span class="version-page">${version.page}</span>
                         </div>
                         <div class="version-actions">
-                            <button class="version-restore-btn" data-version="${version.id}">Restore to This Point</button>
-                            <button class="version-export-btn" data-version="${version.id}">Export</button>
+                            <button class="version-restore-btn" data-version="${version.id}">Restore to This State</button>
+                            <button class="version-export-btn" data-version="${version.id}">Export This Version</button>
                         </div>
                     </div>
                 `).join('')}
@@ -845,40 +827,52 @@ function restoreVersion(versionId) {
     const version = versionHistory.find(v => v.id === versionId);
     if (!version) return;
     
-    if (confirm(`Are you sure you want to restore to version ${versionId}?\nThis will restore the website to the state it was in at that time.\nCurrent changes will be lost unless you save them first.`)) {
-        // Save current state as a new version before restoring
-        const currentChanges = getCurrentSavedChanges();
-        if (Object.keys(currentChanges).length > 0) {
-            createNewVersion(currentChanges, `Auto-backup before restore to version ${versionId}`);
-        }
-        
-        // Apply the version's changes (these represent the state at that time)
-        const restoredChanges = { ...version.changes };
-        
-        // Update the DOM immediately
-        Object.keys(restoredChanges).forEach(elementId => {
-            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-            if (element) {
-                element.textContent = restoredChanges[elementId];
-                originalContent[elementId] = restoredChanges[elementId];
+    if (confirm(`Are you sure you want to restore to version ${versionId}? This will overwrite current changes.`)) {
+        // First, save current state as a new version before restoring
+        const currentState = {};
+        document.querySelectorAll('.editable-text').forEach(element => {
+            const elementId = element.getAttribute('data-editable-id');
+            if (elementId) {
+                currentState[elementId] = element.textContent;
             }
         });
         
-        // Apply to all matching elements on the page
-        applyChangesToDOM(restoredChanges);
+        if (Object.keys(currentState).length > 0) {
+            createNewVersion(currentState, `State before restoring to version ${versionId} - ${new Date().toLocaleString()}`);
+        }
         
-        // Save the restored state as current
-        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(restoredChanges));
+        // Apply the restored version changes
+        let restoredCount = 0;
+        Object.keys(version.changes).forEach(elementId => {
+            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+            if (element) {
+                element.textContent = version.changes[elementId];
+                originalContent[elementId] = version.changes[elementId];
+                restoredCount++;
+            }
+        });
         
-        // Update version tracking
+        // Also apply to non-editable elements that might match
+        Object.keys(version.changes).forEach(elementId => {
+            const newContent = version.changes[elementId];
+            const matchingElements = findElementsByContent(newContent);
+            matchingElements.forEach(el => {
+                if (!el.classList.contains('editable-text')) {
+                    el.textContent = newContent;
+                }
+            });
+        });
+        
+        // Update the permanent storage with restored content
+        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(version.changes));
+        
+        // Update current version
+        currentVersion = versionId;
+        saveVersionHistory();
         updateVersionDisplay();
         
-        // Reset unsaved changes flag
-        hasUnsavedChanges = false;
-        updateSaveStatus();
-        
-        console.log(`Restored to version ${versionId}`);
-        alert(`Successfully restored to version ${versionId}!\nThe website now shows the content as it was at that time.`);
+        console.log(`Restored ${restoredCount} elements to version ${versionId}`);
+        alert(`Successfully restored to version ${versionId}!\nCurrent state saved to version history.`);
     }
 }
 
@@ -962,4 +956,4 @@ function importChanges() {
     });
     
     input.click();
-} 
+}

@@ -1406,6 +1406,17 @@ body.admin-mode .hero {
     text-align: center;
 }
 
+.version-info-text {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid var(--accent-color);
+}
+
 .version-list {
     display: flex;
     flex-direction: column;
@@ -1451,19 +1462,23 @@ body.admin-mode .hero {
 }
 
 .version-details {
+    display: flex;
+    gap: 15px;
     margin-bottom: 12px;
+    font-size: 12px;
 }
 
-.version-details small {
-    color: #666;
-    font-size: 11px;
+.version-changes {
+    background-color: var(--accent-color);
+    color: var(--white);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
 }
 
-.no-versions {
-    text-align: center;
+.version-page {
     color: #666;
     font-style: italic;
-    padding: 40px 20px;
 }
 
 .version-actions {

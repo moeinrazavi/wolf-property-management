@@ -3,10 +3,15 @@
     --primary-color: #2c3e50;
     --secondary-color: #e74c3c;
     --accent-color: #3498db;
-    --text-color: #333;
-    --dark-text: #2c3e50;
-    --light-gray: #f5f5f5;
+    --text-color: #2c3e50;
+    --light-text: #7f8c8d;
     --white: #ffffff;
+    --light-gray: #ecf0f1;
+    --border-color: #bdc3c7;
+    --success-color: #27ae60;
+    --success-hover: #229954;
+    --info-color: #3498db;
+    --info-hover: #2980b9;
     --transition: all 0.3s ease;
     --header-height: 80px;
 }
@@ -1124,10 +1129,10 @@ nav ul li a.active {
     top: 0;
     left: 0;
     right: 0;
-    background-color: var(--primary-color);
+    background: var(--accent-color);
     color: var(--white);
-    z-index: 1500;
     padding: 10px 20px;
+    z-index: 1000;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -1135,39 +1140,117 @@ nav ul li a.active {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1200px;
-    margin: 0 auto;
+    margin-bottom: 10px;
 }
 
-.admin-controls-header span {
-    font-weight: 600;
+.admin-controls-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.admin-controls-content p {
+    margin: 0;
     font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .admin-logout-btn {
-    background-color: var(--secondary-color);
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--white);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 5px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.admin-logout-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.version-info {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.save-changes-btn {
+    background: var(--success-color);
     color: var(--white);
     border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.save-changes-btn:hover:not(:disabled) {
+    background: var(--success-hover);
+    transform: translateY(-1px);
+}
+
+.save-changes-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.refresh-content-btn {
+    background: var(--info-color);
+    color: var(--white);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.refresh-content-btn:hover:not(:disabled) {
+    background: var(--info-hover);
+    transform: translateY(-1px);
+}
+
+.refresh-content-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.version-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.version-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--white);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
-    transition: var(--transition);
+    transition: all 0.3s ease;
 }
 
-.admin-logout-btn:hover {
-    background-color: #c0392b;
+.version-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
-.admin-controls-content {
-    max-width: 1200px;
-    margin: 5px auto 0;
+.version-btn-danger {
+    background: rgba(231, 76, 60, 0.8);
+    border-color: rgba(231, 76, 60, 0.9);
 }
 
-.admin-controls-content p {
-    font-size: 12px;
-    opacity: 0.9;
-    margin: 0;
+.version-btn-danger:hover {
+    background: rgba(231, 76, 60, 1);
 }
 
 /* Inline Editing Styles */
@@ -1323,80 +1406,6 @@ body.admin-mode .hero {
 }
 
 /* Version Control Styles */
-.version-info {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 10px;
-    font-size: 12px;
-    opacity: 0.9;
-}
-
-.version-info span {
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 4px 8px;
-    border-radius: 4px;
-}
-
-.version-controls {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.version-btn {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--white);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 11px;
-    transition: var(--transition);
-}
-
-.version-btn:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
-}
-
-/* Save Changes Button */
-.save-changes-btn {
-    background-color: #27ae60;
-    color: var(--white);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: var(--transition);
-    margin-bottom: 10px;
-    width: 100%;
-}
-
-.save-changes-btn:hover {
-    background-color: #229954;
-    transform: translateY(-1px);
-}
-
-.save-changes-btn:disabled {
-    background-color: #95a5a6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* Danger Button */
-.version-btn-danger {
-    background-color: #e74c3c;
-    border-color: #c0392b;
-}
-
-.version-btn-danger:hover {
-    background-color: #c0392b;
-    border-color: #a93226;
-}
-
-/* Version History Modal */
 .version-history-modal {
     display: block;
     position: fixed;

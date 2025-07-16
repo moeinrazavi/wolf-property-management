@@ -668,7 +668,7 @@ function saveChanges() {
         }
     });
     
-    // Create version history entry with the PREVIOUS state
+    // Create version history entry with the PREVIOUS state ONLY when save button is pressed
     if (Object.keys(currentState).length > 0) {
         const version = createNewVersion(currentState, `Previous state before save - ${new Date().toLocaleString()}`);
         console.log('Saved previous state as version:', version.id);
@@ -839,19 +839,6 @@ function restoreVersion(versionId) {
     if (!version) return;
     
     if (confirm(`Are you sure you want to restore to version ${versionId}? This will overwrite current changes.`)) {
-        // First, save current state as a new version before restoring
-        const currentState = {};
-        document.querySelectorAll('.editable-text').forEach(element => {
-            const elementId = element.getAttribute('data-editable-id');
-            if (elementId) {
-                currentState[elementId] = element.textContent;
-            }
-        });
-        
-        if (Object.keys(currentState).length > 0) {
-            createNewVersion(currentState, `State before restoring to version ${versionId} - ${new Date().toLocaleString()}`);
-        }
-        
         // Apply the restored version changes
         let restoredCount = 0;
         Object.keys(version.changes).forEach(elementId => {
@@ -882,8 +869,12 @@ function restoreVersion(versionId) {
         saveVersionHistory();
         updateVersionDisplay();
         
+        // Mark as having unsaved changes so user can save if they want
+        hasUnsavedChanges = true;
+        updateSaveStatus();
+        
         console.log(`Restored ${restoredCount} elements to version ${versionId}`);
-        alert(`Successfully restored to version ${versionId}!\nCurrent state saved to version history.`);
+        alert(`Successfully restored to version ${versionId}!\n\nNote: The restored state is now your current state. Click "Save Changes" to make it permanent.`);
     }
 }
 
@@ -950,10 +941,11 @@ function importChanges() {
                             }
                         });
                         
-                        // Create new version from import
-                        createNewVersion(data.changes, `Imported from ${data.timestamp || 'unknown'}`);
+                        // Mark as having unsaved changes so user can save if they want
+                        hasUnsavedChanges = true;
+                        updateSaveStatus();
                         
-                        alert('Changes imported successfully!');
+                        alert('Changes imported successfully!\n\nNote: The imported changes are now your current state. Click "Save Changes" to make them permanent.');
                     }
                 } else {
                     alert('Invalid import file format.');

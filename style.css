@@ -1359,6 +1359,43 @@ body.admin-mode .hero {
     border-color: rgba(255, 255, 255, 0.4);
 }
 
+/* Save Changes Button */
+.save-changes-btn {
+    background-color: #27ae60;
+    color: var(--white);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: var(--transition);
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.save-changes-btn:hover {
+    background-color: #229954;
+    transform: translateY(-1px);
+}
+
+.save-changes-btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Danger Button */
+.version-btn-danger {
+    background-color: #e74c3c;
+    border-color: #c0392b;
+}
+
+.version-btn-danger:hover {
+    background-color: #c0392b;
+    border-color: #a93226;
+}
+
 /* Version History Modal */
 .version-history-modal {
     display: block;

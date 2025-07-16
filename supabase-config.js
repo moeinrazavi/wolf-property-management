@@ -131,11 +131,16 @@ const DEFAULT_ADMIN = {
 // Content mapping for the website
 const CONTENT_MAPPING = {
     'index.html': {
+        // Hero Section
         'hero-title': { selector: '.hero h1', type: 'text' },
         'hero-subtitle': { selector: '.hero h2', type: 'text' },
         'hero-description': { selector: '.hero p', type: 'text' },
+        
+        // Find Your Edge Section
         'find-your-edge-title': { selector: '.find-your-edge h2', type: 'text' },
         'find-your-edge-content': { selector: '.find-your-edge p', type: 'text' },
+        
+        // Neighborhood Spotlights
         'neighborhood-title': { selector: '.neighborhood-spotlights h2', type: 'text' },
         'downtown-title': { selector: '.spotlight:nth-child(1) h3', type: 'text' },
         'downtown-subtitle': { selector: '.spotlight:nth-child(1) h4', type: 'text' },
@@ -143,6 +148,8 @@ const CONTENT_MAPPING = {
         'south-subtitle': { selector: '.spotlight:nth-child(2) h4', type: 'text' },
         'west-title': { selector: '.spotlight:nth-child(3) h3', type: 'text' },
         'west-subtitle': { selector: '.spotlight:nth-child(3) h4', type: 'text' },
+        
+        // Services Section
         'services-title': { selector: '.services h2', type: 'text' },
         'residential-title': { selector: '.service-card:nth-child(1) h3', type: 'text' },
         'residential-description': { selector: '.service-card:nth-child(1) p', type: 'text' },
@@ -150,16 +157,49 @@ const CONTENT_MAPPING = {
         'commercial-description': { selector: '.service-card:nth-child(2) p', type: 'text' },
         'hoa-title': { selector: '.service-card:nth-child(3) h3', type: 'text' },
         'hoa-description': { selector: '.service-card:nth-child(3) p', type: 'text' },
+        
+        // Service Categories
         'categories-title': { selector: '.service-categories h2', type: 'text' },
+        'residential-category-title': { selector: '.category-card:nth-child(1) h3', type: 'text' },
+        'residential-feature-1': { selector: '.category-card:nth-child(1) .category-features li:nth-child(1)', type: 'text' },
+        'residential-feature-2': { selector: '.category-card:nth-child(1) .category-features li:nth-child(2)', type: 'text' },
+        'residential-feature-3': { selector: '.category-card:nth-child(1) .category-features li:nth-child(3)', type: 'text' },
+        'residential-feature-4': { selector: '.category-card:nth-child(1) .category-features li:nth-child(4)', type: 'text' },
+        'residential-feature-5': { selector: '.category-card:nth-child(1) .category-features li:nth-child(5)', type: 'text' },
+        'residential-feature-6': { selector: '.category-card:nth-child(1) .category-features li:nth-child(6)', type: 'text' },
+        
+        'commercial-category-title': { selector: '.category-card:nth-child(2) h3', type: 'text' },
+        'commercial-feature-1': { selector: '.category-card:nth-child(2) .category-features li:nth-child(1)', type: 'text' },
+        'commercial-feature-2': { selector: '.category-card:nth-child(2) .category-features li:nth-child(2)', type: 'text' },
+        'commercial-feature-3': { selector: '.category-card:nth-child(2) .category-features li:nth-child(3)', type: 'text' },
+        'commercial-feature-4': { selector: '.category-card:nth-child(2) .category-features li:nth-child(4)', type: 'text' },
+        'commercial-feature-5': { selector: '.category-card:nth-child(2) .category-features li:nth-child(5)', type: 'text' },
+        'commercial-feature-6': { selector: '.category-card:nth-child(2) .category-features li:nth-child(6)', type: 'text' },
+        
+        'associations-category-title': { selector: '.category-card:nth-child(3) h3', type: 'text' },
+        'associations-feature-1': { selector: '.category-card:nth-child(3) .category-features li:nth-child(1)', type: 'text' },
+        'associations-feature-2': { selector: '.category-card:nth-child(3) .category-features li:nth-child(2)', type: 'text' },
+        'associations-feature-3': { selector: '.category-card:nth-child(3) .category-features li:nth-child(3)', type: 'text' },
+        'associations-feature-4': { selector: '.category-card:nth-child(3) .category-features li:nth-child(4)', type: 'text' },
+        'associations-feature-5': { selector: '.category-card:nth-child(3) .category-features li:nth-child(5)', type: 'text' },
+        'associations-feature-6': { selector: '.category-card:nth-child(3) .category-features li:nth-child(6)', type: 'text' },
+        
+        // Footer
         'footer-company': { selector: '.footer-info h3', type: 'text' },
         'footer-phone': { selector: '.footer-info p:nth-child(2)', type: 'text' },
-        'footer-email': { selector: '.footer-info p:nth-child(3)', type: 'text' }
+        'footer-email': { selector: '.footer-info p:nth-child(3)', type: 'text' },
+        'footer-copyright': { selector: '.copyright', type: 'text' }
     },
     'about.html': {
+        // Hero Section
         'about-hero-title': { selector: '.about-hero h1', type: 'text' },
         'about-hero-subtitle': { selector: '.about-hero .hero-subtitle', type: 'text' },
+        
+        // Company Story
         'about-company-title': { selector: '.about-company h2', type: 'text' },
         'about-company-content': { selector: '.about-content p', type: 'text' },
+        
+        // Team Section
         'team-title': { selector: '.team-members h2', type: 'text' },
         'adam-name': { selector: '.team-member:nth-child(1) h3', type: 'text' },
         'adam-position': { selector: '.team-member:nth-child(1) .position', type: 'text' },
@@ -167,11 +207,24 @@ const CONTENT_MAPPING = {
         'patricia-name': { selector: '.team-member:nth-child(2) h3', type: 'text' },
         'patricia-position': { selector: '.team-member:nth-child(2) .position', type: 'text' },
         'patricia-bio': { selector: '.team-member:nth-child(2) .team-member-bio p', type: 'text' },
+        
+        // Statistics
         'stats-properties': { selector: '.stats-section .stat-item:nth-child(1) h3', type: 'text' },
+        'stats-properties-label': { selector: '.stats-section .stat-item:nth-child(1) p', type: 'text' },
         'stats-satisfaction': { selector: '.stats-section .stat-item:nth-child(2) h3', type: 'text' },
+        'stats-satisfaction-label': { selector: '.stats-section .stat-item:nth-child(2) p', type: 'text' },
         'stats-experience': { selector: '.stats-section .stat-item:nth-child(3) h3', type: 'text' },
+        'stats-experience-label': { selector: '.stats-section .stat-item:nth-child(3) p', type: 'text' },
+        
+        // Call to Action
         'cta-title': { selector: '.cta-section h2', type: 'text' },
-        'cta-description': { selector: '.cta-section p', type: 'text' }
+        'cta-description': { selector: '.cta-section p', type: 'text' },
+        
+        // Footer
+        'footer-company': { selector: '.footer-info h3', type: 'text' },
+        'footer-phone': { selector: '.footer-info p:nth-child(2)', type: 'text' },
+        'footer-email': { selector: '.footer-info p:nth-child(3)', type: 'text' },
+        'footer-copyright': { selector: '.copyright', type: 'text' }
     }
 };
 

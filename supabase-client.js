@@ -14,6 +14,8 @@ class DatabaseService {
     // Authentication methods
     async signIn(email, password) {
         try {
+            console.log('Attempting to sign in with:', email);
+            
             // Use custom admin table for authentication
             const { data, error } = await this.supabase
                 .from('admin_users')
@@ -30,6 +32,7 @@ class DatabaseService {
             // Simple password check (in production, use proper hashing)
             if (data && data.password_hash === password) {
                 this.currentUser = data;
+                console.log('Authentication successful for:', email);
                 
                 // Update last login
                 try {
@@ -43,6 +46,7 @@ class DatabaseService {
 
                 return { user: data, error: null };
             } else {
+                console.log('Invalid credentials for:', email);
                 return { user: null, error: 'Invalid credentials' };
             }
         } catch (error) {
@@ -86,8 +90,67 @@ class DatabaseService {
         }
     }
 
+    async getMediaContent(pageName) {
+        try {
+            const { data, error } = await this.supabase
+                .from('media_content')
+                .select('*')
+                .eq('page_name', pageName)
+                .eq('is_active', true);
+
+            if (error) {
+                console.error('Get media content error:', error);
+                return { media: {}, error: error.message };
+            }
+
+            // Convert to key-value pairs
+            const media = {};
+            if (data) {
+                data.forEach(item => {
+                    media[item.element_id] = {
+                        url: item.file_url,
+                        alt: item.alt_text,
+                        type: item.file_type
+                    };
+                });
+            }
+
+            return { media, error: null };
+        } catch (error) {
+            console.error('Get media content error:', error);
+            return { media: {}, error: error.message };
+        }
+    }
+
     async saveContent(pageName, changes, versionDescription = '') {
         try {
+            console.log('Saving content to Supabase:', { pageName, changes, versionDescription });
+            
+            // First, let's test if we can access the tables
+            console.log('Testing table access...');
+            
+            // Test website_content table access
+            const { data: testContent, error: testContentError } = await this.supabase
+                .from('website_content')
+                .select('count', { count: 'exact', head: true });
+                
+            if (testContentError) {
+                console.error('Cannot access website_content table:', testContentError);
+                return { version: null, error: `Cannot access website_content table: ${testContentError.message}` };
+            }
+            
+            // Test version_history table access
+            const { data: testVersion, error: testVersionError } = await this.supabase
+                .from('version_history')
+                .select('count', { count: 'exact', head: true });
+                
+            if (testVersionError) {
+                console.error('Cannot access version_history table:', testVersionError);
+                return { version: null, error: `Cannot access version_history table: ${testVersionError.message}` };
+            }
+            
+            console.log('Table access test successful');
+            
             // Get current version number
             const { data: versionData, error: versionQueryError } = await this.supabase
                 .from('version_history')
@@ -102,48 +165,68 @@ class DatabaseService {
             }
 
             const nextVersion = versionData && versionData.length > 0 ? versionData[0].version_number + 1 : 1;
+            console.log('Next version number:', nextVersion);
 
             // Save each change
-            const contentPromises = Object.keys(changes).map(elementId => {
-                return this.supabase
+            const contentPromises = Object.keys(changes).map(async (elementId) => {
+                const contentData = {
+                    page_name: pageName,
+                    element_id: elementId,
+                    content_text: changes[elementId],
+                    content_type: 'text',
+                    version: nextVersion,
+                    is_active: true,
+                    updated_at: new Date().toISOString()
+                };
+                console.log('Saving content item:', contentData);
+                
+                const result = await this.supabase
                     .from('website_content')
-                    .upsert({
-                        page_name: pageName,
-                        element_id: elementId,
-                        content_text: changes[elementId],
-                        content_type: 'text',
-                        version: nextVersion,
-                        is_active: true,
-                        updated_at: new Date().toISOString()
-                    });
+                    .upsert(contentData);
+                    
+                if (result.error) {
+                    console.error('Error saving content item:', elementId, result.error);
+                } else {
+                    console.log('Successfully saved content item:', elementId);
+                }
+                
+                return result;
             });
 
             const contentResults = await Promise.all(contentPromises);
             
             // Check for content save errors
-            for (const result of contentResults) {
+            for (let i = 0; i < contentResults.length; i++) {
+                const result = contentResults[i];
+                const elementId = Object.keys(changes)[i];
                 if (result.error) {
-                    console.error('Content save error:', result.error);
-                    return { version: null, error: 'Could not save content' };
+                    console.error('Content save error for element:', elementId, result.error);
+                    return { version: null, error: `Could not save content for ${elementId}: ${result.error.message}` };
                 }
             }
 
+            console.log('All content items saved successfully');
+
             // Save version history
+            const versionHistoryData = {
+                version_number: nextVersion,
+                description: versionDescription || `Version ${nextVersion} - ${new Date().toLocaleString()}`,
+                changes: changes,
+                page_name: pageName,
+                created_by: this.currentUser?.id
+            };
+            console.log('Saving version history:', versionHistoryData);
+            
             const { error: versionError } = await this.supabase
                 .from('version_history')
-                .insert({
-                    version_number: nextVersion,
-                    description: versionDescription || `Version ${nextVersion} - ${new Date().toLocaleString()}`,
-                    changes: changes,
-                    page_name: pageName,
-                    created_by: this.currentUser?.id
-                });
+                .insert(versionHistoryData);
 
             if (versionError) {
                 console.error('Version history save error:', versionError);
                 return { version: null, error: 'Could not save version history' };
             }
 
+            console.log('Version history saved successfully');
             return { version: nextVersion, error: null };
         } catch (error) {
             console.error('Save content error:', error);
@@ -201,6 +284,22 @@ class DatabaseService {
             return { success: true, error: null };
         } catch (error) {
             console.error('Restore version error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async clearVersionHistory(pageName) {
+        try {
+            const { error } = await this.supabase
+                .from('version_history')
+                .delete()
+                .eq('page_name', pageName);
+
+            if (error) throw error;
+
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Clear version history error:', error);
             return { success: false, error: error.message };
         }
     }

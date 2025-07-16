@@ -254,6 +254,9 @@ class DatabaseService {
 
     async restoreVersion(pageName, versionNumber) {
         try {
+            console.log(`Restoring version ${versionNumber} for page ${pageName}`);
+            
+            // Get the version data
             const { data, error } = await this.supabase
                 .from('version_history')
                 .select('changes')
@@ -261,25 +264,46 @@ class DatabaseService {
                 .eq('version_number', versionNumber)
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error getting version data:', error);
+                throw error;
+            }
 
-            // Apply the restored changes
+            console.log('Version data retrieved:', data);
+
+            // Apply the restored changes to the database
             const changes = data.changes;
             const contentPromises = Object.keys(changes).map(elementId => {
+                const contentData = {
+                    page_name: pageName,
+                    element_id: elementId,
+                    content_text: changes[elementId],
+                    content_type: 'text',
+                    version: versionNumber,
+                    is_active: true,
+                    updated_at: new Date().toISOString()
+                };
+                
+                console.log('Restoring content item:', contentData);
+                
                 return this.supabase
                     .from('website_content')
-                    .upsert({
-                        page_name: pageName,
-                        element_id: elementId,
-                        content_text: changes[elementId],
-                        content_type: 'text',
-                        version: versionNumber,
-                        is_active: true,
-                        updated_at: new Date().toISOString()
-                    });
+                    .upsert(contentData);
             });
 
-            await Promise.all(contentPromises);
+            const contentResults = await Promise.all(contentPromises);
+            
+            // Check for content restore errors
+            for (let i = 0; i < contentResults.length; i++) {
+                const result = contentResults[i];
+                const elementId = Object.keys(changes)[i];
+                if (result.error) {
+                    console.error('Content restore error for element:', elementId, result.error);
+                    throw new Error(`Could not restore content for ${elementId}: ${result.error.message}`);
+                }
+            }
+
+            console.log('All content items restored successfully');
 
             return { success: true, error: null };
         } catch (error) {

@@ -445,8 +445,19 @@ function startEditing(element) {
 function saveEdit(element, newText, elementId) {
     if (newText.trim() !== originalContent[elementId]) {
         element.textContent = newText;
-        hasUnsavedChanges = true;
+        
+        // Immediately save to localStorage for permanent storage
+        const currentChanges = JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY) || '{}');
+        currentChanges[elementId] = newText;
+        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(currentChanges));
+        
+        // Update original content to reflect the saved state
+        originalContent[elementId] = newText;
+        
+        hasUnsavedChanges = false;
         updateSaveStatus();
+        
+        console.log('Change saved permanently:', elementId, newText);
     } else {
         element.innerHTML = originalContent[elementId];
     }
@@ -497,40 +508,27 @@ function showSaveModal() {
 }
 
 function saveChanges() {
-    // Collect all changes
-    const changes = {};
+    // Collect all current changes from localStorage
+    const currentChanges = JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY) || '{}');
     
-    document.querySelectorAll('.editable-text').forEach(element => {
-        const elementId = element.getAttribute('data-editable-id');
-        if (elementId && element.textContent !== originalContent[elementId]) {
-            changes[elementId] = element.textContent;
-        }
-    });
-    
-    if (Object.keys(changes).length > 0) {
-        // Create new version
-        const version = createNewVersion(changes);
-        
-        // Store changes permanently
-        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(changes));
-        
-        // Update original content
-        Object.keys(changes).forEach(elementId => {
-            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-            if (element) {
-                originalContent[elementId] = element.textContent;
-            }
-        });
+    if (Object.keys(currentChanges).length > 0) {
+        // Create new version from all saved changes
+        const version = createNewVersion(currentChanges, 'Manual save from admin interface');
         
         hasUnsavedChanges = false;
         updateSaveStatus();
         
-        console.log('Changes saved as version:', version.id);
-        alert(`Changes saved successfully as version ${version.id}!`);
+        console.log('All changes saved as version:', version.id);
+        alert(`All changes saved successfully as version ${version.id}!`);
+    } else {
+        alert('No changes to save. All changes are already permanent.');
     }
 }
 
 function revertChanges() {
+    // Clear all saved changes from localStorage
+    localStorage.removeItem(CHANGES_STORAGE_KEY);
+    
     // Revert all changes to original content
     Object.keys(originalContent).forEach(elementId => {
         const element = document.querySelector(`[data-editable-id="${elementId}"]`);
@@ -542,16 +540,19 @@ function revertChanges() {
     hasUnsavedChanges = false;
     updateSaveStatus();
     
-    console.log('Changes reverted');
+    console.log('All changes reverted and cleared from storage');
 }
 
 function updateSaveStatus() {
     const adminControls = document.querySelector('.admin-controls-content p');
-    if (hasUnsavedChanges) {
-        adminControls.textContent = 'You have unsaved changes. Click on any text to edit. Press Enter to save or Escape to cancel.';
-        adminControls.style.color = '#e74c3c';
+    const currentChanges = JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY) || '{}');
+    const hasChanges = Object.keys(currentChanges).length > 0;
+    
+    if (hasChanges) {
+        adminControls.textContent = `You have ${Object.keys(currentChanges).length} permanent changes. Click "Save Changes" to create a version.`;
+        adminControls.style.color = '#27ae60';
     } else {
-        adminControls.textContent = 'Click on any text to edit. Press Enter to save or Escape to cancel.';
+        adminControls.textContent = 'Click on any text to edit. Press Enter to save permanently or Escape to cancel.';
         adminControls.style.color = 'rgba(255, 255, 255, 0.9)';
     }
 }

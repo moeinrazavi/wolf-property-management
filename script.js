@@ -354,31 +354,15 @@ function initializeAdminSystem() {
     // Admin logout
     adminLogoutBtn.addEventListener('click', () => {
         if (hasUnsavedChanges) {
-            showSaveModal();
+            if (confirm('You have unsaved changes. If you logout now, these changes will not be applied.\n\nClick "OK" to logout without saving, or "Cancel" to stay and save your changes.')) {
+                logoutAdmin();
+            }
         } else {
             logoutAdmin();
         }
     });
 
-    // Save modal handlers
-    saveConfirm.addEventListener('click', () => {
-        saveChanges();
-        logoutAdmin();
-        saveModal.style.display = 'none';
-    });
-
-    saveCancel.addEventListener('click', () => {
-        revertChanges();
-        logoutAdmin();
-        saveModal.style.display = 'none';
-    });
-
-    // Close save modal when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target === saveModal) {
-            saveModal.style.display = 'none';
-        }
-    });
+    // Note: Save modal is no longer used - replaced with direct save button and logout warning
 
     // Warn before leaving page with unsaved changes
     window.addEventListener('beforeunload', (e) => {
@@ -438,6 +422,20 @@ function addVersionControls() {
         <span>Total Versions: ${versionHistory.length}</span>
     `;
     
+    // Add save changes button
+    const saveButton = document.createElement('button');
+    saveButton.id = 'save-changes-btn';
+    saveButton.className = 'save-changes-btn';
+    saveButton.disabled = !hasUnsavedChanges;
+    saveButton.textContent = hasUnsavedChanges ? 'Save Changes' : 'No Changes to Save';
+    saveButton.addEventListener('click', () => {
+        if (hasUnsavedChanges) {
+            saveChanges();
+        } else {
+            alert('No changes to save.');
+        }
+    });
+    
     // Add version controls
     const versionControls = document.createElement('div');
     versionControls.className = 'version-controls';
@@ -445,15 +443,18 @@ function addVersionControls() {
         <button id="version-history-btn" class="version-btn">Version History</button>
         <button id="export-changes-btn" class="version-btn">Export Changes</button>
         <button id="import-changes-btn" class="version-btn">Import Changes</button>
+        <button id="clear-history-btn" class="version-btn version-btn-danger">Clear History</button>
     `;
     
     adminControls.appendChild(versionInfo);
+    adminControls.appendChild(saveButton);
     adminControls.appendChild(versionControls);
     
     // Add event listeners
     document.getElementById('version-history-btn').addEventListener('click', showVersionHistory);
     document.getElementById('export-changes-btn').addEventListener('click', exportChanges);
     document.getElementById('import-changes-btn').addEventListener('click', importChanges);
+    document.getElementById('clear-history-btn').addEventListener('click', clearVersionHistory);
 }
 
 function removeVersionControls() {
@@ -757,12 +758,22 @@ function revertChanges() {
 
 function updateSaveStatus() {
     const adminControls = document.querySelector('.admin-controls-content p');
+    const saveButton = document.getElementById('save-changes-btn');
+    
     if (hasUnsavedChanges) {
-        adminControls.textContent = 'You have unsaved changes. Click on any text to edit. Press Enter to save or Escape to cancel.';
+        adminControls.textContent = 'You have unsaved changes. Click "Save Changes" to apply them permanently.';
         adminControls.style.color = '#e74c3c';
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
     } else {
         adminControls.textContent = 'Click on any text to edit. Press Enter to save or Escape to cancel.';
         adminControls.style.color = 'rgba(255, 255, 255, 0.9)';
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = 'No Changes to Save';
+        }
     }
 }
 
@@ -956,4 +967,41 @@ function importChanges() {
     });
     
     input.click();
+}
+
+function clearVersionHistory() {
+    const warningMessage = `⚠️ WARNING: This action cannot be undone!\n\n` +
+                          `You are about to clear ALL version history (${versionHistory.length} versions).\n\n` +
+                          `This will:\n` +
+                          `• Delete all saved versions\n` +
+                          `• Remove the ability to revert to previous states\n` +
+                          `• Keep your current changes intact\n\n` +
+                          `Are you absolutely sure you want to clear the version history?`;
+    
+    if (confirm(warningMessage)) {
+        // Double confirmation for safety
+        if (confirm('FINAL WARNING: This will permanently delete all version history.\n\nType "YES" to confirm, or click Cancel to abort.')) {
+            // Clear version history
+            versionHistory = [];
+            currentVersion = 0;
+            
+            // Save empty history
+            saveVersionHistory();
+            
+            // Update display
+            updateVersionDisplay();
+            
+            // Update version controls
+            const versionInfo = document.querySelector('.version-info');
+            if (versionInfo) {
+                versionInfo.innerHTML = `
+                    <span>Current Version: ${currentVersion}</span>
+                    <span>Total Versions: ${versionHistory.length}</span>
+                `;
+            }
+            
+            console.log('Version history cleared');
+            alert('Version history has been cleared successfully.\n\nNote: Your current changes remain intact.');
+        }
+    }
 }

@@ -10,6 +10,14 @@ const ADMIN_CREDENTIALS = {
 let isAdminLoggedIn = false;
 let hasUnsavedChanges = false;
 let originalContent = {};
+let currentVersion = 0;
+let versionHistory = [];
+const MAX_VERSIONS = 10;
+
+// Version management
+const VERSION_STORAGE_KEY = 'wolf_pm_versions';
+const CHANGES_STORAGE_KEY = 'wolf_pm_changes';
+const CURRENT_VERSION_KEY = 'wolf_pm_current_version';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Header scroll effect
@@ -54,9 +62,107 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(element);
     });
 
+    // Load version history
+    loadVersionHistory();
+    
+    // Apply saved changes on page load
+    applySavedChanges();
+
     // Admin System Initialization
     initializeAdminSystem();
 });
+
+// Version Management Functions
+function loadVersionHistory() {
+    try {
+        const savedVersions = localStorage.getItem(VERSION_STORAGE_KEY);
+        const savedCurrentVersion = localStorage.getItem(CURRENT_VERSION_KEY);
+        
+        if (savedVersions) {
+            versionHistory = JSON.parse(savedVersions);
+        }
+        
+        if (savedCurrentVersion) {
+            currentVersion = parseInt(savedCurrentVersion);
+        }
+        
+        console.log('Version history loaded:', versionHistory.length, 'versions');
+    } catch (error) {
+        console.error('Error loading version history:', error);
+        versionHistory = [];
+        currentVersion = 0;
+    }
+}
+
+function saveVersionHistory() {
+    try {
+        localStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(versionHistory));
+        localStorage.setItem(CURRENT_VERSION_KEY, currentVersion.toString());
+    } catch (error) {
+        console.error('Error saving version history:', error);
+    }
+}
+
+function createNewVersion(changes, description = '') {
+    const timestamp = new Date().toISOString();
+    const version = {
+        id: currentVersion + 1,
+        timestamp: timestamp,
+        changes: changes,
+        description: description || `Version ${currentVersion + 1} - ${new Date().toLocaleString()}`,
+        page: window.location.pathname
+    };
+    
+    // Add to history
+    versionHistory.push(version);
+    
+    // Keep only the latest MAX_VERSIONS
+    if (versionHistory.length > MAX_VERSIONS) {
+        versionHistory = versionHistory.slice(-MAX_VERSIONS);
+    }
+    
+    currentVersion = version.id;
+    
+    // Save to localStorage
+    saveVersionHistory();
+    
+    // Update admin controls
+    updateVersionDisplay();
+    
+    return version;
+}
+
+function applySavedChanges() {
+    try {
+        const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
+        if (savedChanges) {
+            const changes = JSON.parse(savedChanges);
+            
+            Object.keys(changes).forEach(elementId => {
+                const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+                if (element) {
+                    element.innerHTML = changes[elementId];
+                    // Update original content to reflect applied changes
+                    originalContent[elementId] = changes[elementId];
+                }
+            });
+            
+            console.log('Applied saved changes');
+        }
+    } catch (error) {
+        console.error('Error applying saved changes:', error);
+    }
+}
+
+function updateVersionDisplay() {
+    const versionInfo = document.querySelector('.version-info');
+    if (versionInfo) {
+        versionInfo.innerHTML = `
+            <span>Current Version: ${currentVersion}</span>
+            <span>Total Versions: ${versionHistory.length}</span>
+        `;
+    }
+}
 
 // Admin System Functions
 function initializeAdminSystem() {
@@ -156,6 +262,9 @@ function loginAdmin() {
     // Make text content editable
     makeContentEditable();
     
+    // Add version controls
+    addVersionControls();
+    
     console.log('Admin logged in successfully');
 }
 
@@ -170,11 +279,51 @@ function logoutAdmin() {
     // Remove editable functionality
     removeEditableContent();
     
+    // Remove version controls
+    removeVersionControls();
+    
     // Reset changes
     hasUnsavedChanges = false;
     originalContent = {};
     
     console.log('Admin logged out');
+}
+
+function addVersionControls() {
+    const adminControls = document.querySelector('.admin-controls-content');
+    
+    // Add version info
+    const versionInfo = document.createElement('div');
+    versionInfo.className = 'version-info';
+    versionInfo.innerHTML = `
+        <span>Current Version: ${currentVersion}</span>
+        <span>Total Versions: ${versionHistory.length}</span>
+    `;
+    
+    // Add version controls
+    const versionControls = document.createElement('div');
+    versionControls.className = 'version-controls';
+    versionControls.innerHTML = `
+        <button id="version-history-btn" class="version-btn">Version History</button>
+        <button id="export-changes-btn" class="version-btn">Export Changes</button>
+        <button id="import-changes-btn" class="version-btn">Import Changes</button>
+    `;
+    
+    adminControls.appendChild(versionInfo);
+    adminControls.appendChild(versionControls);
+    
+    // Add event listeners
+    document.getElementById('version-history-btn').addEventListener('click', showVersionHistory);
+    document.getElementById('export-changes-btn').addEventListener('click', exportChanges);
+    document.getElementById('import-changes-btn').addEventListener('click', importChanges);
+}
+
+function removeVersionControls() {
+    const versionInfo = document.querySelector('.version-info');
+    const versionControls = document.querySelector('.version-controls');
+    
+    if (versionInfo) versionInfo.remove();
+    if (versionControls) versionControls.remove();
 }
 
 function makeContentEditable() {
@@ -348,35 +497,37 @@ function showSaveModal() {
 }
 
 function saveChanges() {
-    // In a real application, this would send data to a server
+    // Collect all changes
     const changes = {};
     
     document.querySelectorAll('.editable-text').forEach(element => {
         const elementId = element.getAttribute('data-editable-id');
         if (elementId && element.textContent !== originalContent[elementId]) {
-            changes[elementId] = {
-                original: originalContent[elementId],
-                new: element.textContent
-            };
+            changes[elementId] = element.textContent;
         }
     });
     
-    // Store changes in localStorage for demo purposes
-    localStorage.setItem('websiteChanges', JSON.stringify(changes));
-    
-    // Update original content
-    Object.keys(changes).forEach(elementId => {
-        const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-        if (element) {
-            originalContent[elementId] = element.textContent;
-        }
-    });
-    
-    hasUnsavedChanges = false;
-    updateSaveStatus();
-    
-    console.log('Changes saved:', changes);
-    alert('Changes saved successfully!');
+    if (Object.keys(changes).length > 0) {
+        // Create new version
+        const version = createNewVersion(changes);
+        
+        // Store changes permanently
+        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(changes));
+        
+        // Update original content
+        Object.keys(changes).forEach(elementId => {
+            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+            if (element) {
+                originalContent[elementId] = element.textContent;
+            }
+        });
+        
+        hasUnsavedChanges = false;
+        updateSaveStatus();
+        
+        console.log('Changes saved as version:', version.id);
+        alert(`Changes saved successfully as version ${version.id}!`);
+    }
 }
 
 function revertChanges() {
@@ -403,4 +554,161 @@ function updateSaveStatus() {
         adminControls.textContent = 'Click on any text to edit. Press Enter to save or Escape to cancel.';
         adminControls.style.color = 'rgba(255, 255, 255, 0.9)';
     }
+}
+
+// Version History Functions
+function showVersionHistory() {
+    const modal = document.createElement('div');
+    modal.className = 'version-history-modal';
+    modal.innerHTML = `
+        <div class="version-history-content">
+            <span class="version-close">&times;</span>
+            <h3>Version History</h3>
+            <div class="version-list">
+                ${versionHistory.map(version => `
+                    <div class="version-item">
+                        <div class="version-header">
+                            <span class="version-number">Version ${version.id}</span>
+                            <span class="version-date">${new Date(version.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="version-description">${version.description}</div>
+                        <div class="version-actions">
+                            <button class="version-restore-btn" data-version="${version.id}">Restore</button>
+                            <button class="version-export-btn" data-version="${version.id}">Export</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listeners
+    modal.querySelector('.version-close').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+    
+    // Restore version
+    modal.querySelectorAll('.version-restore-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const versionId = parseInt(btn.getAttribute('data-version'));
+            restoreVersion(versionId);
+            modal.remove();
+        });
+    });
+    
+    // Export version
+    modal.querySelectorAll('.version-export-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const versionId = parseInt(btn.getAttribute('data-version'));
+            exportVersion(versionId);
+        });
+    });
+}
+
+function restoreVersion(versionId) {
+    const version = versionHistory.find(v => v.id === versionId);
+    if (!version) return;
+    
+    if (confirm(`Are you sure you want to restore to version ${versionId}? This will overwrite current changes.`)) {
+        // Apply version changes
+        Object.keys(version.changes).forEach(elementId => {
+            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+            if (element) {
+                element.innerHTML = version.changes[elementId];
+                originalContent[elementId] = version.changes[elementId];
+            }
+        });
+        
+        // Update current version
+        currentVersion = versionId;
+        saveVersionHistory();
+        updateVersionDisplay();
+        
+        alert(`Restored to version ${versionId}`);
+    }
+}
+
+function exportChanges() {
+    const changes = {};
+    document.querySelectorAll('.editable-text').forEach(element => {
+        const elementId = element.getAttribute('data-editable-id');
+        if (elementId) {
+            changes[elementId] = element.textContent;
+        }
+    });
+    
+    const exportData = {
+        changes: changes,
+        version: currentVersion,
+        timestamp: new Date().toISOString(),
+        page: window.location.pathname
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wolf-pm-changes-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportVersion(versionId) {
+    const version = versionHistory.find(v => v.id === versionId);
+    if (!version) return;
+    
+    const blob = new Blob([JSON.stringify(version, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wolf-pm-version-${versionId}-${new Date(version.timestamp).toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importChanges() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                
+                if (data.changes) {
+                    if (confirm('Import these changes? This will overwrite current content.')) {
+                        // Apply imported changes
+                        Object.keys(data.changes).forEach(elementId => {
+                            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+                            if (element) {
+                                element.innerHTML = data.changes[elementId];
+                                originalContent[elementId] = data.changes[elementId];
+                            }
+                        });
+                        
+                        // Create new version from import
+                        createNewVersion(data.changes, `Imported from ${data.timestamp || 'unknown'}`);
+                        
+                        alert('Changes imported successfully!');
+                    }
+                } else {
+                    alert('Invalid import file format.');
+                }
+            } catch (error) {
+                alert('Error reading import file: ' + error.message);
+            }
+        };
+        
+        reader.readAsText(file);
+    });
+    
+    input.click();
 } 

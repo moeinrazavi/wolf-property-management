@@ -1,0 +1,25 @@
+{
+  "name": "wolf-property-management",
+  "version": "1.0.0",
+  "description": "Wolf Property Management website with Supabase backend",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8001",
+    "build": "echo 'No build process needed for static site'",
+    "deploy": "echo 'Deploy to GitHub Pages or your hosting provider'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "supabase": "^1.145.0"
+  },
+  "keywords": [
+    "property-management",
+    "supabase",
+    "real-estate",
+    "admin-panel"
+  ],
+  "author": "Wolf Property Management",
+  "license": "MIT"
+} 

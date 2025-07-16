@@ -144,51 +144,91 @@ async function testAdminLogin() {
 // Database Functions
 async function loadContentFromDatabase() {
     try {
-        console.log('Loading content from Supabase for page:', currentPage);
+        console.log('🔄 Loading content from Supabase database...');
         
-        // Load text content
-        const { content, error } = await dbService.getContent(currentPage);
-        
-        console.log('Content loaded from database:', content);
-        console.log('Error if any:', error);
+        // Get content from database
+        const { data: contentData, error } = await dbService.supabase
+            .from('website_content')
+            .select('*')
+            .eq('page_name', currentPage)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false });
         
         if (error) {
-            console.error('Error loading content:', error);
+            console.error('❌ Error loading content:', error);
             return;
         }
         
-        // Apply text content to the page by finding matching elements
-        Object.keys(content).forEach(elementId => {
-            const newContent = content[elementId];
-            
-            // Find elements that might match this content
-            const matchingElements = findElementsByContent(newContent, elementId);
-            
-            if (matchingElements.length > 0) {
-                // Apply to the first matching element
-                const element = matchingElements[0];
-                element.textContent = newContent;
-                
-                // Store the original content for editing
-                const generatedId = generateElementId(element);
-                originalContent[generatedId] = newContent;
-                
-                console.log(`Applied content: ${elementId} -> "${newContent}" to element:`, element);
-            } else {
-                console.warn(`No matching element found for content: ${elementId} -> "${newContent}"`);
+        if (!contentData || contentData.length === 0) {
+            console.log('📄 No content found in database for this page');
+            return;
+        }
+        
+        console.log(`📚 Found ${contentData.length} content items in database:`, contentData);
+        
+        // Clear existing data attributes to allow fresh matching
+        document.querySelectorAll('[data-editable-id]').forEach(el => {
+            el.removeAttribute('data-editable-id');
+        });
+        
+        // Group content by element_id to get the latest version
+        const latestContent = {};
+        contentData.forEach(item => {
+            const existing = latestContent[item.element_id];
+            if (!existing || new Date(item.updated_at) > new Date(existing.updated_at)) {
+                latestContent[item.element_id] = item;
             }
         });
         
-        // Load media content
-        const { media, mediaError } = await dbService.getMediaContent(currentPage);
+        console.log(`🎯 Processing ${Object.keys(latestContent).length} unique content items...`);
+        
+        let appliedCount = 0;
+        Object.values(latestContent).forEach(contentItem => {
+            const elementId = contentItem.element_id;
+            const newContent = contentItem.content_text;
+            
+            // Find the matching element
+            const element = findElementByContent(newContent, elementId);
+            
+            if (element) {
+                // Apply the content
+                element.textContent = newContent;
+                
+                // Set the data attribute for future reference
+                element.setAttribute('data-editable-id', elementId);
+                
+                // Store for editing system
+                originalContent[elementId] = newContent;
+                
+                appliedCount++;
+                console.log(`✅ Applied: ${elementId} -> "${newContent}" to:`, element.tagName + (element.className ? '.' + element.className.split(' ').join('.') : ''));
+            } else {
+                console.warn(`⚠️ Could not find element for: ${elementId} -> "${newContent}"`);
+            }
+        });
+        
+        console.log(`🎉 Content loading complete! Applied ${appliedCount} out of ${Object.keys(latestContent).length} items.`);
+        
+        // Load media content (unchanged)
+        const { data: mediaData, error: mediaError } = await dbService.supabase
+            .from('media_content')
+            .select('*')
+            .eq('page_name', currentPage)
+            .eq('is_active', true);
         
         if (mediaError) {
             console.error('Error loading media:', mediaError);
-        } else {
-            console.log('Media loaded from database:', media);
+        } else if (mediaData && mediaData.length > 0) {
+            console.log('🖼️ Media loaded from database:', mediaData);
+            
             // Apply media content to the page
-            Object.keys(media).forEach(elementId => {
-                const mediaInfo = media[elementId];
+            mediaData.forEach(mediaItem => {
+                const elementId = mediaItem.element_id;
+                const mediaInfo = {
+                    url: mediaItem.file_url,
+                    alt: mediaItem.alt_text,
+                    type: mediaItem.file_type
+                };
                 
                 // Handle different types of media elements
                 if (elementId === 'wolf-logo') {
@@ -196,29 +236,21 @@ async function loadContentFromDatabase() {
                     if (logoElement) {
                         logoElement.src = mediaInfo.url;
                         logoElement.alt = mediaInfo.alt;
-                        console.log(`Applied logo: ${mediaInfo.url}`);
+                        console.log(`✅ Applied logo: ${mediaInfo.url}`);
                     }
                 } else if (elementId.includes('hero-background')) {
                     const heroElement = document.querySelector('.hero');
                     if (heroElement) {
                         heroElement.style.backgroundImage = `url('${mediaInfo.url}')`;
-                        console.log(`Applied hero background: ${mediaInfo.url}`);
-                    }
-                } else if (elementId.includes('image')) {
-                    // Handle other images based on element ID
-                    const imageElement = document.querySelector(`[data-image-id="${elementId}"]`);
-                    if (imageElement) {
-                        imageElement.src = mediaInfo.url;
-                        imageElement.alt = mediaInfo.alt;
-                        console.log(`Applied image: ${elementId} -> ${mediaInfo.url}`);
+                        console.log(`✅ Applied hero background: ${mediaInfo.url}`);
                     }
                 }
             });
         }
         
-        console.log('Content and media loaded successfully from database');
+        console.log('✅ Content and media loaded successfully from database');
     } catch (error) {
-        console.error('Error loading content from database:', error);
+        console.error('💥 Error loading content from database:', error);
     }
 }
 
@@ -310,63 +342,7 @@ function isContentSimilar(text1, text2) {
            clean1 === clean2;
 }
 
-function findElementsByContent(content, selectorHint) {
-    const selectors = [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span', 
-        '.hero-subtitle', '.position', '.service-card h3', '.service-card p',
-        '.category-card h3', '.category-features li', '.footer-info h3', '.footer-info p'
-    ];
-    
-    const results = [];
-    const cleanContent = content.trim().toLowerCase();
-    
-    selectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(element => {
-            const elementText = element.textContent.trim().toLowerCase();
-            
-            // Exact match
-            if (elementText === cleanContent) {
-                results.push(element);
-                return;
-            }
-            
-            // Partial match (both directions) - more flexible
-            if (cleanContent.length > 5 && elementText.length > 5) {
-                // Check if either text contains a significant portion of the other
-                const minLength = Math.min(cleanContent.length, elementText.length);
-                const matchLength = Math.max(10, Math.floor(minLength * 0.7)); // 70% match or at least 10 chars
-                
-                if (elementText.includes(cleanContent.substring(0, matchLength)) || 
-                    cleanContent.includes(elementText.substring(0, matchLength))) {
-                    results.push(element);
-                    return;
-                }
-            }
-            
-            // Shorter content exact match
-            if (cleanContent.length <= 10 && elementText === cleanContent) {
-                results.push(element);
-            }
-        });
-    });
-    
-    // If no matches found, try a broader search
-    if (results.length === 0) {
-        const allTextElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, span');
-        allTextElements.forEach(element => {
-            const elementText = element.textContent.trim().toLowerCase();
-            
-            // Try to find elements with similar content
-            if (elementText.includes(cleanContent.substring(0, Math.min(20, cleanContent.length))) ||
-                cleanContent.includes(elementText.substring(0, Math.min(20, elementText.length)))) {
-                results.push(element);
-            }
-        });
-    }
-    
-    return results;
-}
+// Legacy findElementsByContent function removed - replaced with improved findElementByContent
 
 function isElementMatch(element, elementId) {
     // Generate current element ID and compare
@@ -641,11 +617,18 @@ function makeContentEditable() {
 }
 
 function makeElementEditable(element) {
-    // Store original content
-    const elementId = generateElementId(element);
+    // Skip if already editable
+    if (element.classList.contains('editable-text')) return;
     
-    // Store original content (no longer using localStorage)
-    originalContent[elementId] = element.textContent;
+    // Generate or use existing element ID
+    let elementId = element.getAttribute('data-editable-id');
+    if (!elementId) {
+        elementId = generateElementId(element);
+        element.setAttribute('data-editable-id', elementId);
+    }
+    
+    // Store original content
+    originalContent[elementId] = element.textContent.trim();
     
     // Add editable class
     element.classList.add('editable-text');
@@ -653,8 +636,7 @@ function makeElementEditable(element) {
     // Add click event for editing
     element.addEventListener('click', handleElementClick);
     
-    // Add data attribute for identification
-    element.setAttribute('data-editable-id', elementId);
+    console.log(`🎯 Made element editable: ${elementId} -> "${element.textContent.trim().substring(0, 30)}..."`);
 }
 
 function handleElementClick(e) {
@@ -714,12 +696,21 @@ function startEditing(element) {
 }
 
 function saveEdit(element, newText, elementId) {
-    if (newText.trim() !== originalContent[elementId]) {
-        element.textContent = newText;
+    const trimmedNewText = newText.trim();
+    const originalText = originalContent[elementId] || '';
+    
+    if (trimmedNewText !== originalText) {
+        // Update the element content
+        element.textContent = trimmedNewText;
+        
+        // Mark as having unsaved changes
         hasUnsavedChanges = true;
         updateSaveStatus();
+        
+        console.log(`📝 Content changed: ${elementId} -> "${trimmedNewText}"`);
     } else {
-        element.innerHTML = originalContent[elementId];
+        // Revert to original content
+        element.textContent = originalText;
     }
     
     element.classList.remove('editing');
@@ -740,27 +731,169 @@ function removeEditableContent() {
 }
 
 function generateElementId(element) {
-    // Generate a unique ID based on element position and content
-    const path = getElementPath(element);
-    return `editable-${path.replace(/[^a-zA-Z0-9]/g, '-')}`;
-}
-
-function getElementPath(element) {
-    const path = [];
-    let current = element;
+    // Create a more reliable ID based on text content + position
+    const text = element.textContent.trim().substring(0, 20).toLowerCase();
+    const tagName = element.tagName.toLowerCase();
+    const classList = Array.from(element.classList).join('-');
     
-    while (current && current !== document.body) {
-        let selector = current.tagName.toLowerCase();
-        if (current.id) {
-            selector += `#${current.id}`;
-        } else if (current.className) {
-            selector += `.${current.className.split(' ').join('.')}`;
-        }
-        path.unshift(selector);
-        current = current.parentElement;
+    // Create a unique signature
+    let signature = `${tagName}`;
+    if (classList) signature += `-${classList}`;
+    if (text) signature += `-${text.replace(/[^a-zA-Z0-9]/g, '')}`;
+    
+    // Add position info for uniqueness
+    const parent = element.parentElement;
+    if (parent) {
+        const siblings = Array.from(parent.children).filter(child => 
+            child.tagName === element.tagName && 
+            child.classList.toString() === element.classList.toString()
+        );
+        const index = siblings.indexOf(element);
+        if (index > 0) signature += `-${index}`;
     }
     
-    return path.join(' > ');
+    return `editable-${signature}`.replace(/[^a-zA-Z0-9-]/g, '');
+}
+
+function findElementByContent(content, elementId) {
+    console.log(`🔍 Looking for element: ${elementId} with content: "${content}"`);
+    
+    // First try to find by existing data attribute
+    let element = document.querySelector(`[data-editable-id="${elementId}"]`);
+    if (element) {
+        console.log(`✅ Found by data attribute:`, element);
+        return element;
+    }
+    
+    // Extract the text signature from elementId
+    const textSignature = elementId.split('-').pop();
+    const cleanContent = content.trim().toLowerCase();
+    
+    // Define selectors in order of specificity
+    const selectors = [
+        // Hero section
+        '.hero h1',
+        '.hero h2', 
+        '.hero p',
+        '.hero-content h1',
+        '.hero-content h2',
+        '.hero-content p',
+        
+        // Main sections
+        '.find-your-edge h2',
+        '.find-your-edge p',
+        '.neighborhood-spotlights h2',
+        '.services h2',
+        '.service-categories h2',
+        
+        // Spotlight cards
+        '.spotlight h3',
+        '.spotlight h4',
+        
+        // Service cards
+        '.service-card h3',
+        '.service-card p',
+        
+        // Category cards
+        '.category-card h3',
+        '.category-features li',
+        
+        // Footer
+        '.footer-info h3',
+        '.footer-info p',
+        
+        // About page specific
+        '.about-hero h1',
+        '.about-hero .hero-subtitle',
+        '.about-company h2',
+        '.about-content p',
+        '.value-card h3',
+        '.value-card p',
+        '.team-member-info h3',
+        '.team-member-info .position',
+        '.team-member-bio p',
+        '.stats-section h3',
+        '.stats-section p',
+        '.cta-section h2',
+        '.cta-section p',
+        
+        // Generic selectors
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span'
+    ];
+    
+    // Try each selector and find the best match
+    for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        
+        for (const el of elements) {
+            const elText = el.textContent.trim().toLowerCase();
+            
+            // Skip if already has a data attribute (already processed)
+            if (el.hasAttribute('data-editable-id')) continue;
+            
+            // Exact content match
+            if (elText === cleanContent) {
+                console.log(`✅ Found by exact content match (${selector}):`, el);
+                return el;
+            }
+            
+            // Content contains signature
+            if (textSignature && textSignature.length > 3 && elText.includes(textSignature)) {
+                console.log(`✅ Found by text signature match (${selector}):`, el);
+                return el;
+            }
+            
+            // Partial content match for longer texts
+            if (cleanContent.length > 10 && elText.length > 10) {
+                const similarity = calculateTextSimilarity(cleanContent, elText);
+                if (similarity > 0.8) {
+                    console.log(`✅ Found by similarity match (${similarity.toFixed(2)}, ${selector}):`, el);
+                    return el;
+                }
+            }
+        }
+    }
+    
+    console.warn(`⚠️ No element found for: ${elementId} -> "${content}"`);
+    return null;
+}
+
+function calculateTextSimilarity(text1, text2) {
+    const longer = text1.length > text2.length ? text1 : text2;
+    const shorter = text1.length > text2.length ? text2 : text1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const editDistance = levenshteinDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+}
+
+function levenshteinDistance(str1, str2) {
+    const matrix = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
+            }
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
 }
 
 function showSaveModal() {
@@ -768,78 +901,144 @@ function showSaveModal() {
 }
 
 async function saveChanges() {
+    console.log('🔄 Starting save process...');
+    
     // Collect all changes from current editable elements
     const changes = {};
+    let changeCount = 0;
     
     // Collect the new changes
     document.querySelectorAll('.editable-text').forEach(element => {
         const elementId = element.getAttribute('data-editable-id');
         if (elementId) {
-            // Save the new content
-            changes[elementId] = element.textContent;
+            const currentText = element.textContent.trim();
+            const originalText = originalContent[elementId] || '';
+            
+            // Only include if content has actually changed
+            if (currentText !== originalText) {
+                changes[elementId] = currentText;
+                changeCount++;
+                console.log(`📝 Change detected: ${elementId} -> "${currentText}"`);
+            }
         }
     });
     
-    // Also collect changes from elements that might not have the editable class
-    // but have been modified from their original content
-    Object.keys(originalContent).forEach(elementId => {
-        const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-        if (element && element.textContent !== originalContent[elementId]) {
-            changes[elementId] = element.textContent;
-        }
-    });
+    console.log(`📊 Total changes to save: ${changeCount}`);
     
-    if (Object.keys(changes).length > 0) {
-        // Show loading state
-        const saveButton = document.getElementById('save-changes-btn');
-        const originalText = saveButton.textContent;
-        saveButton.textContent = 'Saving...';
-        saveButton.disabled = true;
+    if (changeCount === 0) {
+        alert('No changes to save.');
+        return;
+    }
+    
+    // Show loading state
+    const saveButton = document.getElementById('save-changes-btn');
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    
+    try {
+        console.log('💾 Saving changes to Supabase:', changes);
         
-        try {
-            console.log('Saving changes to Supabase:', changes);
+        // Step 1: Get current version number
+        console.log('🔢 Getting current version number...');
+        const { data: versionData, error: versionQueryError } = await dbService.supabase
+            .from('version_history')
+            .select('version_number')
+            .eq('page_name', currentPage)
+            .order('version_number', { ascending: false })
+            .limit(1);
+
+        if (versionQueryError) {
+            console.error('❌ Version query error:', versionQueryError);
+            throw new Error(`Could not get version number: ${versionQueryError.message}`);
+        }
+
+        const nextVersion = versionData && versionData.length > 0 ? versionData[0].version_number + 1 : 1;
+        console.log(`📈 Next version will be: ${nextVersion}`);
+        
+        // Step 2: Save content to database
+        console.log('📚 Saving content items to database...');
+        let successCount = 0;
+        
+        for (const [elementId, contentText] of Object.entries(changes)) {
+            const contentData = {
+                page_name: currentPage,
+                element_id: elementId,
+                content_text: contentText,
+                content_type: 'text',
+                version: nextVersion,
+                is_active: true,
+                updated_at: new Date().toISOString()
+            };
             
-            // Save to Supabase
-            const { version, error } = await dbService.saveContent(
-                currentPage, 
-                changes, 
-                `Manual save - ${new Date().toLocaleString()}`
-            );
+            console.log(`💾 Saving: ${elementId}...`);
             
-            if (error) {
-                alert(`Save failed: ${error}`);
-                return;
+            const { data: insertData, error: insertError } = await dbService.supabase
+                .from('website_content')
+                .upsert(contentData)
+                .select();
+                
+            if (insertError) {
+                console.error(`❌ Failed to save ${elementId}:`, insertError);
+                throw new Error(`Failed to save ${elementId}: ${insertError.message}`);
             }
             
-            console.log('Changes saved to database, version:', version);
-            
-            // Reload content from database to ensure we have the latest version
-            await loadContentFromDatabase();
-            
-            // Reload version history
-            await loadVersionHistoryFromDatabase();
-            
-            // Reset the original content to match what's now in the database
-            document.querySelectorAll('.editable-text').forEach(element => {
-                const elementId = element.getAttribute('data-editable-id');
-                if (elementId) {
-                    originalContent[elementId] = element.textContent;
-                }
-            });
-            
-            hasUnsavedChanges = false;
-            updateSaveStatus();
-            
-            alert(`Changes saved successfully as version ${version}!\nChanges are now permanent and visible to all users.`);
-            
-        } catch (error) {
-            alert(`Save error: ${error.message}`);
-        } finally {
-            saveButton.textContent = originalText;
-            saveButton.disabled = false;
+            console.log(`✅ Saved ${elementId} successfully:`, insertData);
+            successCount++;
         }
-    } else {
-        alert('No changes to save.');
+        
+        console.log(`✅ All ${successCount} content items saved successfully`);
+        
+        // Step 3: Save version history
+        console.log('📜 Saving version history...');
+        const versionHistoryData = {
+            version_number: nextVersion,
+            description: `Manual save - ${new Date().toLocaleString()} (${successCount} changes)`,
+            changes: changes,
+            page_name: currentPage,
+            created_by: dbService.currentUser?.id || null
+        };
+        
+        const { data: versionInsertData, error: versionError } = await dbService.supabase
+            .from('version_history')
+            .insert(versionHistoryData)
+            .select();
+
+        if (versionError) {
+            console.error('❌ Version history save error:', versionError);
+            throw new Error(`Could not save version history: ${versionError.message}`);
+        }
+        
+        console.log('✅ Version history saved:', versionInsertData);
+        
+        // Step 4: Verify the save by reloading content
+        console.log('🔄 Verifying save by reloading content...');
+        await loadContentFromDatabase();
+        
+        // Step 5: Update local state
+        console.log('🔄 Updating local state...');
+        Object.keys(changes).forEach(elementId => {
+            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+            if (element) {
+                originalContent[elementId] = element.textContent.trim();
+            }
+        });
+        
+        // Reload version history
+        await loadVersionHistoryFromDatabase();
+        
+        hasUnsavedChanges = false;
+        updateSaveStatus();
+        
+        console.log('🎉 Save completed successfully!');
+        alert(`✅ Changes saved successfully as version ${nextVersion}!\n\n${successCount} items updated.\nChanges are now permanent and visible to all users.`);
+        
+    } catch (error) {
+        console.error('💥 Save failed:', error);
+        alert(`❌ Save failed: ${error.message}\n\nPlease check the browser console for details.`);
+    } finally {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
     }
 }
 
@@ -855,16 +1054,8 @@ function applyChangesToDOM(changes) {
         const element = document.querySelector(`[data-editable-id="${elementId}"]`);
         if (element && element.textContent !== changes[elementId]) {
             element.textContent = changes[elementId];
+            console.log(`✅ Applied change to DOM: ${elementId} -> "${changes[elementId]}"`);
         }
-        
-        // Also apply to non-editable elements that might match
-        const selectorPath = elementId.replace('editable-', '').replace(/-/g, ' ');
-        const matchingElements = findElementsByContent(changes[elementId], selectorPath);
-        matchingElements.forEach(el => {
-            if (!el.classList.contains('editable-text')) {
-                el.textContent = changes[elementId];
-            }
-        });
     });
 }
 

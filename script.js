@@ -65,11 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load version history
     loadVersionHistory();
     
-    // Apply saved changes on page load
+    // Apply saved changes on page load (before admin initialization)
     applySavedChanges();
 
     // Admin System Initialization
     initializeAdminSystem();
+    
+    // Apply saved changes again after a brief delay to ensure DOM is ready
+    setTimeout(() => {
+        applySavedChanges();
+    }, 100);
 });
 
 // Version Management Functions
@@ -137,21 +142,151 @@ function applySavedChanges() {
         const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
         if (savedChanges) {
             const changes = JSON.parse(savedChanges);
+            let appliedCount = 0;
             
+            console.log('Applying saved changes...', Object.keys(changes).length, 'changes to apply');
+            
+            // Apply changes to elements that exist
             Object.keys(changes).forEach(elementId => {
-                const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-                if (element) {
-                    element.innerHTML = changes[elementId];
-                    // Update original content to reflect applied changes
-                    originalContent[elementId] = changes[elementId];
+                const newContent = changes[elementId];
+                let applied = false;
+                
+                // Method 1: Try to find by exact element path
+                const elements = findElementsBySelector(elementId);
+                if (elements.length > 0) {
+                    elements[0].textContent = newContent;
+                    applied = true;
+                    appliedCount++;
+                }
+                
+                // Method 2: Try to find by content matching
+                if (!applied) {
+                    const contentMatches = findElementsByContent(newContent);
+                    if (contentMatches.length > 0) {
+                        contentMatches[0].textContent = newContent;
+                        applied = true;
+                        appliedCount++;
+                    }
+                }
+                
+                // Method 3: Find by selector type and update closest match
+                if (!applied) {
+                    const selectorType = extractSelectorType(elementId);
+                    if (selectorType) {
+                        const elements = document.querySelectorAll(selectorType);
+                        for (let element of elements) {
+                            if (isContentSimilar(element.textContent, newContent)) {
+                                element.textContent = newContent;
+                                applied = true;
+                                appliedCount++;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (applied) {
+                    console.log(`✅ Applied: "${newContent}"`);
+                } else {
+                    console.log(`❌ Could not apply: "${newContent}" for ${elementId}`);
                 }
             });
             
-            console.log('Applied saved changes');
+            console.log(`Applied ${appliedCount}/${Object.keys(changes).length} saved changes`);
         }
     } catch (error) {
         console.error('Error applying saved changes:', error);
     }
+}
+
+function findElementsBySelector(elementId) {
+    // Try different approaches to find the element
+    const selectors = [
+        `[data-editable-id="${elementId}"]`,
+        `.${elementId.replace('editable-', '').replace(/-/g, '.')}`,
+        elementId.replace('editable-', '').replace(/-/g, ' ')
+    ];
+    
+    for (let selector of selectors) {
+        try {
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                return Array.from(elements);
+            }
+        } catch (e) {
+            // Invalid selector, continue
+        }
+    }
+    
+    return [];
+}
+
+function extractSelectorType(elementId) {
+    // Extract the HTML tag type from the element ID
+    const parts = elementId.split('-');
+    const tagTypes = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span', 'div'];
+    
+    for (let part of parts) {
+        if (tagTypes.includes(part.toLowerCase())) {
+            return part.toLowerCase();
+        }
+    }
+    
+    return null;
+}
+
+function isContentSimilar(text1, text2) {
+    // Check if content is similar (for matching purposes)
+    const clean1 = text1.trim().toLowerCase().substring(0, 50);
+    const clean2 = text2.trim().toLowerCase().substring(0, 50);
+    
+    return clean1.includes(clean2.substring(0, 20)) || 
+           clean2.includes(clean1.substring(0, 20)) ||
+           clean1 === clean2;
+}
+
+function findElementsByContent(content, selectorHint) {
+    const selectors = [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span', '.hero-subtitle', '.position'
+    ];
+    
+    const results = [];
+    const cleanContent = content.trim().toLowerCase();
+    
+    selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+            const elementText = element.textContent.trim().toLowerCase();
+            
+            // Exact match
+            if (elementText === cleanContent) {
+                results.push(element);
+                return;
+            }
+            
+            // Partial match (both directions)
+            if (cleanContent.length > 10 && elementText.length > 10) {
+                if (elementText.includes(cleanContent.substring(0, 20)) || 
+                    cleanContent.includes(elementText.substring(0, 20))) {
+                    results.push(element);
+                    return;
+                }
+            }
+            
+            // Shorter content exact match
+            if (cleanContent.length <= 10 && elementText === cleanContent) {
+                results.push(element);
+            }
+        });
+    });
+    
+    return results;
+}
+
+function isElementMatch(element, elementId) {
+    // Generate current element ID and compare
+    const currentId = generateElementId(element);
+    return currentId === elementId;
 }
 
 function updateVersionDisplay() {
@@ -374,7 +509,25 @@ function makeContentEditable() {
 function makeElementEditable(element) {
     // Store original content
     const elementId = generateElementId(element);
-    originalContent[elementId] = element.innerHTML;
+    
+    // Check if there's a saved version of this content
+    const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
+    if (savedChanges) {
+        try {
+            const changes = JSON.parse(savedChanges);
+            if (changes[elementId]) {
+                // Apply saved content
+                element.textContent = changes[elementId];
+                originalContent[elementId] = changes[elementId];
+            } else {
+                originalContent[elementId] = element.innerHTML;
+            }
+        } catch (error) {
+            originalContent[elementId] = element.innerHTML;
+        }
+    } else {
+        originalContent[elementId] = element.innerHTML;
+    }
     
     // Add editable class
     element.classList.add('editable-text');
@@ -445,19 +598,8 @@ function startEditing(element) {
 function saveEdit(element, newText, elementId) {
     if (newText.trim() !== originalContent[elementId]) {
         element.textContent = newText;
-        
-        // Immediately save to localStorage for permanent storage
-        const currentChanges = JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY) || '{}');
-        currentChanges[elementId] = newText;
-        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(currentChanges));
-        
-        // Update original content to reflect the saved state
-        originalContent[elementId] = newText;
-        
-        hasUnsavedChanges = false;
+        hasUnsavedChanges = true;
         updateSaveStatus();
-        
-        console.log('Change saved permanently:', elementId, newText);
     } else {
         element.innerHTML = originalContent[elementId];
     }
@@ -508,27 +650,80 @@ function showSaveModal() {
 }
 
 function saveChanges() {
-    // Collect all current changes from localStorage
-    const currentChanges = JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY) || '{}');
+    // Collect all changes from current editable elements
+    const changes = {};
+    const allSavedChanges = getCurrentSavedChanges();
     
-    if (Object.keys(currentChanges).length > 0) {
-        // Create new version from all saved changes
-        const version = createNewVersion(currentChanges, 'Manual save from admin interface');
+    document.querySelectorAll('.editable-text').forEach(element => {
+        const elementId = element.getAttribute('data-editable-id');
+        if (elementId) {
+            // Always save current content to maintain state
+            changes[elementId] = element.textContent;
+        }
+    });
+    
+    if (Object.keys(changes).length > 0) {
+        // Merge with existing saved changes
+        const mergedChanges = { ...allSavedChanges, ...changes };
+        
+        // Create new version
+        const version = createNewVersion(changes, `Manual save - ${new Date().toLocaleString()}`);
+        
+        // Store changes permanently
+        localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(mergedChanges));
+        
+        // Update original content for all elements
+        Object.keys(changes).forEach(elementId => {
+            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+            if (element) {
+                originalContent[elementId] = element.textContent;
+            }
+        });
+        
+        // Apply changes immediately to ensure persistence
+        applyChangesToDOM(mergedChanges);
         
         hasUnsavedChanges = false;
         updateSaveStatus();
         
-        console.log('All changes saved as version:', version.id);
-        alert(`All changes saved successfully as version ${version.id}!`);
+        console.log('Changes saved as version:', version.id);
+        console.log('Total saved changes:', Object.keys(mergedChanges).length);
+        alert(`Changes saved successfully as version ${version.id}!\nChanges will persist across page refreshes.`);
     } else {
-        alert('No changes to save. All changes are already permanent.');
+        alert('No changes to save.');
     }
 }
 
+function getCurrentSavedChanges() {
+    try {
+        const savedChanges = localStorage.getItem(CHANGES_STORAGE_KEY);
+        return savedChanges ? JSON.parse(savedChanges) : {};
+    } catch (error) {
+        console.error('Error reading saved changes:', error);
+        return {};
+    }
+}
+
+function applyChangesToDOM(changes) {
+    // Apply changes to ensure they're visible immediately
+    Object.keys(changes).forEach(elementId => {
+        const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+        if (element && element.textContent !== changes[elementId]) {
+            element.textContent = changes[elementId];
+        }
+        
+        // Also apply to non-editable elements that might match
+        const selectorPath = elementId.replace('editable-', '').replace(/-/g, ' ');
+        const matchingElements = findElementsByContent(changes[elementId], selectorPath);
+        matchingElements.forEach(el => {
+            if (!el.classList.contains('editable-text')) {
+                el.textContent = changes[elementId];
+            }
+        });
+    });
+}
+
 function revertChanges() {
-    // Clear all saved changes from localStorage
-    localStorage.removeItem(CHANGES_STORAGE_KEY);
-    
     // Revert all changes to original content
     Object.keys(originalContent).forEach(elementId => {
         const element = document.querySelector(`[data-editable-id="${elementId}"]`);
@@ -540,19 +735,16 @@ function revertChanges() {
     hasUnsavedChanges = false;
     updateSaveStatus();
     
-    console.log('All changes reverted and cleared from storage');
+    console.log('Changes reverted');
 }
 
 function updateSaveStatus() {
     const adminControls = document.querySelector('.admin-controls-content p');
-    const currentChanges = JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY) || '{}');
-    const hasChanges = Object.keys(currentChanges).length > 0;
-    
-    if (hasChanges) {
-        adminControls.textContent = `You have ${Object.keys(currentChanges).length} permanent changes. Click "Save Changes" to create a version.`;
-        adminControls.style.color = '#27ae60';
+    if (hasUnsavedChanges) {
+        adminControls.textContent = 'You have unsaved changes. Click on any text to edit. Press Enter to save or Escape to cancel.';
+        adminControls.style.color = '#e74c3c';
     } else {
-        adminControls.textContent = 'Click on any text to edit. Press Enter to save permanently or Escape to cancel.';
+        adminControls.textContent = 'Click on any text to edit. Press Enter to save or Escape to cancel.';
         adminControls.style.color = 'rgba(255, 255, 255, 0.9)';
     }
 }

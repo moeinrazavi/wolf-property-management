@@ -24,6 +24,7 @@
                     <li><a href="about.html" class="active">About</a></li>
                     <li><a href="#contact">Contact</a></li>
                     <li><a href="#search" class="search-icon">🔍</a></li>
+                    <li><a href="#" id="admin-login-btn" class="admin-login-btn">Admin</a></li>
                 </ul>
             </nav>
         </div>
@@ -177,5 +178,47 @@
             once: true
         });
     </script>
+
+    <!-- Admin Login Modal -->
+    <div id="admin-modal" class="admin-modal">
+        <div class="admin-modal-content">
+            <span class="admin-close">&times;</span>
+            <h2>Admin Login</h2>
+            <form id="admin-login-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-admin">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Controls -->
+    <div id="admin-controls" class="admin-controls" style="display: none;">
+        <div class="admin-controls-header">
+            <span>Admin Mode</span>
+            <button id="admin-logout" class="admin-logout-btn">Logout</button>
+        </div>
+        <div class="admin-controls-content">
+            <p>Click on any text to edit. Press Enter to save or Escape to cancel.</p>
+        </div>
+    </div>
+
+    <!-- Save Changes Modal -->
+    <div id="save-modal" class="save-modal">
+        <div class="save-modal-content">
+            <h3>Save Changes</h3>
+            <p>Do you want to save your changes?</p>
+            <div class="save-modal-buttons">
+                <button id="save-confirm" class="btn btn-primary">Save</button>
+                <button id="save-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

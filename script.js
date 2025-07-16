@@ -68,7 +68,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Admin System Initialization
     initializeAdminSystem();
+    
+    // Set up content refresh mechanism
+    setupContentRefresh();
 });
+
+// Set up content refresh to ensure we always have the latest content from Supabase
+function setupContentRefresh() {
+    // Refresh content when page becomes visible (user switches back to tab)
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !isAdminLoggedIn) {
+            console.log('Page became visible, refreshing content from database...');
+            loadContentFromDatabase();
+        }
+    });
+    
+    // Refresh content every 30 seconds if not in admin mode
+    setInterval(() => {
+        if (!isAdminLoggedIn) {
+            console.log('Periodic content refresh from database...');
+            loadContentFromDatabase();
+        }
+    }, 30000); // 30 seconds
+}
 
 // Test database connection
 async function testDatabaseConnection() {
@@ -510,6 +532,39 @@ function addVersionControls() {
         }
     });
     
+    // Add refresh content button
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-content-btn';
+    refreshButton.className = 'refresh-content-btn';
+    refreshButton.textContent = 'Refresh from Database';
+    refreshButton.addEventListener('click', async () => {
+        refreshButton.textContent = 'Refreshing...';
+        refreshButton.disabled = true;
+        
+        try {
+            await loadContentFromDatabase();
+            await loadVersionHistoryFromDatabase();
+            
+            // Reset original content
+            document.querySelectorAll('.editable-text').forEach(element => {
+                const elementId = element.getAttribute('data-editable-id');
+                if (elementId) {
+                    originalContent[elementId] = element.textContent;
+                }
+            });
+            
+            hasUnsavedChanges = false;
+            updateSaveStatus();
+            
+            alert('Content refreshed from database successfully!');
+        } catch (error) {
+            alert(`Refresh failed: ${error.message}`);
+        } finally {
+            refreshButton.textContent = 'Refresh from Database';
+            refreshButton.disabled = false;
+        }
+    });
+    
     // Add version controls
     const versionControls = document.createElement('div');
     versionControls.className = 'version-controls';
@@ -522,6 +577,7 @@ function addVersionControls() {
     
     adminControls.appendChild(versionInfo);
     adminControls.appendChild(saveButton);
+    adminControls.appendChild(refreshButton);
     adminControls.appendChild(versionControls);
     
     // Add event listeners
@@ -755,21 +811,25 @@ async function saveChanges() {
                 return;
             }
             
-            // Update original content for all elements
-            Object.keys(changes).forEach(elementId => {
-                const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-                if (element) {
-                    originalContent[elementId] = element.textContent;
-                }
-            });
+            console.log('Changes saved to database, version:', version);
+            
+            // Reload content from database to ensure we have the latest version
+            await loadContentFromDatabase();
             
             // Reload version history
             await loadVersionHistoryFromDatabase();
             
+            // Reset the original content to match what's now in the database
+            document.querySelectorAll('.editable-text').forEach(element => {
+                const elementId = element.getAttribute('data-editable-id');
+                if (elementId) {
+                    originalContent[elementId] = element.textContent;
+                }
+            });
+            
             hasUnsavedChanges = false;
             updateSaveStatus();
             
-            console.log('Changes saved to database, version:', version);
             alert(`Changes saved successfully as version ${version}!\nChanges are now permanent and visible to all users.`);
             
         } catch (error) {
@@ -915,18 +975,28 @@ async function restoreVersion(versionNumber) {
                 return;
             }
             
-            // Reload content from database
+            console.log(`Restored to version ${versionNumber} in database`);
+            
+            // Reload content from database to show the restored version
             await loadContentFromDatabase();
             
             // Reload version history
             await loadVersionHistoryFromDatabase();
             
-            // Mark as having unsaved changes so user can save if they want
-            hasUnsavedChanges = true;
+            // Reset the original content to match what's now in the database
+            document.querySelectorAll('.editable-text').forEach(element => {
+                const elementId = element.getAttribute('data-editable-id');
+                if (elementId) {
+                    originalContent[elementId] = element.textContent;
+                }
+            });
+            
+            // Mark as having no unsaved changes since we just restored
+            hasUnsavedChanges = false;
             updateSaveStatus();
             
             console.log(`Restored to version ${versionNumber}`);
-            alert(`Successfully restored to version ${versionNumber}!\n\nNote: The restored state is now your current state. Click "Save Changes" to make it permanent.`);
+            alert(`Successfully restored to version ${versionNumber}!\n\nThe restored content is now live and visible to all users.`);
             
         } catch (error) {
             alert(`Restore error: ${error.message}`);

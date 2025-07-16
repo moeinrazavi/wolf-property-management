@@ -15,6 +15,9 @@ const MAX_VERSIONS = 10;
 const currentPage = window.location.pathname.split('/').pop() || 'index.html';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Test database connection first
+    testDatabaseConnection();
+    
     // Header scroll effect
     const header = document.querySelector('header');
     const scrollThreshold = 50;
@@ -67,32 +70,131 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeAdminSystem();
 });
 
+// Test database connection
+async function testDatabaseConnection() {
+    try {
+        console.log('Testing database connection...');
+        
+        // Try to get a simple count from the admin_users table
+        const { data, error } = await dbService.supabase
+            .from('admin_users')
+            .select('count', { count: 'exact', head: true });
+            
+        if (error) {
+            console.error('Database connection test failed:', error);
+            alert('Warning: Database connection failed. Admin features may not work properly.');
+        } else {
+            console.log('Database connection test successful');
+            
+            // Test admin login
+            await testAdminLogin();
+        }
+    } catch (error) {
+        console.error('Database connection test error:', error);
+        alert('Warning: Database connection failed. Admin features may not work properly.');
+    }
+}
+
+// Test admin login
+async function testAdminLogin() {
+    try {
+        console.log('Testing admin login...');
+        
+        // Try to get admin user data
+        const { data, error } = await dbService.supabase
+            .from('admin_users')
+            .select('*')
+            .eq('is_active', true)
+            .limit(1);
+            
+        if (error) {
+            console.error('Admin login test failed:', error);
+        } else if (data && data.length > 0) {
+            console.log('Admin login test successful. Found admin user:', data[0].email);
+        } else {
+            console.warn('No active admin users found in database');
+        }
+    } catch (error) {
+        console.error('Admin login test error:', error);
+    }
+}
+
 // Database Functions
 async function loadContentFromDatabase() {
     try {
-        console.log('Loading content from Supabase...');
+        console.log('Loading content from Supabase for page:', currentPage);
+        
+        // Load text content
         const { content, error } = await dbService.getContent(currentPage);
+        
+        console.log('Content loaded from database:', content);
+        console.log('Error if any:', error);
         
         if (error) {
             console.error('Error loading content:', error);
             return;
         }
         
-        // Apply content to the page
+        // Apply text content to the page by finding matching elements
         Object.keys(content).forEach(elementId => {
-            const contentMapping = dbService.getPageContentMapping(currentPage);
-            const elementInfo = contentMapping[elementId];
+            const newContent = content[elementId];
             
-            if (elementInfo) {
-                const element = document.querySelector(elementInfo.selector);
-                if (element) {
-                    element.textContent = content[elementId];
-                    console.log(`Applied content: ${elementId} -> "${content[elementId]}"`);
-                }
+            // Find elements that might match this content
+            const matchingElements = findElementsByContent(newContent, elementId);
+            
+            if (matchingElements.length > 0) {
+                // Apply to the first matching element
+                const element = matchingElements[0];
+                element.textContent = newContent;
+                
+                // Store the original content for editing
+                const generatedId = generateElementId(element);
+                originalContent[generatedId] = newContent;
+                
+                console.log(`Applied content: ${elementId} -> "${newContent}" to element:`, element);
+            } else {
+                console.warn(`No matching element found for content: ${elementId} -> "${newContent}"`);
             }
         });
         
-        console.log('Content loaded successfully from database');
+        // Load media content
+        const { media, mediaError } = await dbService.getMediaContent(currentPage);
+        
+        if (mediaError) {
+            console.error('Error loading media:', mediaError);
+        } else {
+            console.log('Media loaded from database:', media);
+            // Apply media content to the page
+            Object.keys(media).forEach(elementId => {
+                const mediaInfo = media[elementId];
+                
+                // Handle different types of media elements
+                if (elementId === 'wolf-logo') {
+                    const logoElement = document.querySelector('.logo-img');
+                    if (logoElement) {
+                        logoElement.src = mediaInfo.url;
+                        logoElement.alt = mediaInfo.alt;
+                        console.log(`Applied logo: ${mediaInfo.url}`);
+                    }
+                } else if (elementId.includes('hero-background')) {
+                    const heroElement = document.querySelector('.hero');
+                    if (heroElement) {
+                        heroElement.style.backgroundImage = `url('${mediaInfo.url}')`;
+                        console.log(`Applied hero background: ${mediaInfo.url}`);
+                    }
+                } else if (elementId.includes('image')) {
+                    // Handle other images based on element ID
+                    const imageElement = document.querySelector(`[data-image-id="${elementId}"]`);
+                    if (imageElement) {
+                        imageElement.src = mediaInfo.url;
+                        imageElement.alt = mediaInfo.alt;
+                        console.log(`Applied image: ${elementId} -> ${mediaInfo.url}`);
+                    }
+                }
+            });
+        }
+        
+        console.log('Content and media loaded successfully from database');
     } catch (error) {
         console.error('Error loading content from database:', error);
     }
@@ -188,7 +290,9 @@ function isContentSimilar(text1, text2) {
 
 function findElementsByContent(content, selectorHint) {
     const selectors = [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span', '.hero-subtitle', '.position'
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span', 
+        '.hero-subtitle', '.position', '.service-card h3', '.service-card p',
+        '.category-card h3', '.category-features li', '.footer-info h3', '.footer-info p'
     ];
     
     const results = [];
@@ -205,10 +309,14 @@ function findElementsByContent(content, selectorHint) {
                 return;
             }
             
-            // Partial match (both directions)
-            if (cleanContent.length > 10 && elementText.length > 10) {
-                if (elementText.includes(cleanContent.substring(0, 20)) || 
-                    cleanContent.includes(elementText.substring(0, 20))) {
+            // Partial match (both directions) - more flexible
+            if (cleanContent.length > 5 && elementText.length > 5) {
+                // Check if either text contains a significant portion of the other
+                const minLength = Math.min(cleanContent.length, elementText.length);
+                const matchLength = Math.max(10, Math.floor(minLength * 0.7)); // 70% match or at least 10 chars
+                
+                if (elementText.includes(cleanContent.substring(0, matchLength)) || 
+                    cleanContent.includes(elementText.substring(0, matchLength))) {
                     results.push(element);
                     return;
                 }
@@ -220,6 +328,20 @@ function findElementsByContent(content, selectorHint) {
             }
         });
     });
+    
+    // If no matches found, try a broader search
+    if (results.length === 0) {
+        const allTextElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, span');
+        allTextElements.forEach(element => {
+            const elementText = element.textContent.trim().toLowerCase();
+            
+            // Try to find elements with similar content
+            if (elementText.includes(cleanContent.substring(0, Math.min(20, cleanContent.length))) ||
+                cleanContent.includes(elementText.substring(0, Math.min(20, elementText.length)))) {
+                results.push(element);
+            }
+        });
+    }
     
     return results;
 }
@@ -602,6 +724,15 @@ async function saveChanges() {
         }
     });
     
+    // Also collect changes from elements that might not have the editable class
+    // but have been modified from their original content
+    Object.keys(originalContent).forEach(elementId => {
+        const element = document.querySelector(`[data-editable-id="${elementId}"]`);
+        if (element && element.textContent !== originalContent[elementId]) {
+            changes[elementId] = element.textContent;
+        }
+    });
+    
     if (Object.keys(changes).length > 0) {
         // Show loading state
         const saveButton = document.getElementById('save-changes-btn');
@@ -610,6 +741,8 @@ async function saveChanges() {
         saveButton.disabled = true;
         
         try {
+            console.log('Saving changes to Supabase:', changes);
+            
             // Save to Supabase
             const { version, error } = await dbService.saveContent(
                 currentPage, 
@@ -884,39 +1017,49 @@ function importChanges() {
     input.click();
 }
 
-function clearVersionHistory() {
+async function clearVersionHistory() {
     const warningMessage = `⚠️ WARNING: This action cannot be undone!\n\n` +
                           `You are about to clear ALL version history (${versionHistory.length} versions).\n\n` +
                           `This will:\n` +
-                          `• Delete all saved versions\n` +
+                          `• Delete all saved versions from the database\n` +
                           `• Remove the ability to revert to previous states\n` +
                           `• Keep your current changes intact\n\n` +
                           `Are you absolutely sure you want to clear the version history?`;
     
     if (confirm(warningMessage)) {
         // Double confirmation for safety
-        if (confirm('FINAL WARNING: This will permanently delete all version history.\n\nType "YES" to confirm, or click Cancel to abort.')) {
-            // Clear version history
-            versionHistory = [];
-            currentVersion = 0;
-            
-            // Save empty history
-            saveVersionHistory();
-            
-            // Update display
-            updateVersionDisplay();
-            
-            // Update version controls
-            const versionInfo = document.querySelector('.version-info');
-            if (versionInfo) {
-                versionInfo.innerHTML = `
-                    <span>Current Version: ${currentVersion}</span>
-                    <span>Total Versions: ${versionHistory.length}</span>
-                `;
+        if (confirm('FINAL WARNING: This will permanently delete all version history from the database.\n\nType "YES" to confirm, or click Cancel to abort.')) {
+            try {
+                // Clear version history from Supabase
+                const { error } = await dbService.clearVersionHistory(currentPage);
+                
+                if (error) {
+                    alert(`Failed to clear version history: ${error}`);
+                    return;
+                }
+                
+                // Clear local version history
+                versionHistory = [];
+                currentVersion = 0;
+                
+                // Update display
+                updateVersionDisplay();
+                
+                // Update version controls
+                const versionInfo = document.querySelector('.version-info');
+                if (versionInfo) {
+                    versionInfo.innerHTML = `
+                        <span>Current Version: ${currentVersion}</span>
+                        <span>Total Versions: ${versionHistory.length}</span>
+                    `;
+                }
+                
+                console.log('Version history cleared from database');
+                alert('Version history has been cleared successfully from the database.\n\nNote: Your current changes remain intact.');
+                
+            } catch (error) {
+                alert(`Error clearing version history: ${error.message}`);
             }
-            
-            console.log('Version history cleared');
-            alert('Version history has been cleared successfully.\n\nNote: Your current changes remain intact.');
         }
     }
 }

@@ -3,7 +3,7 @@ const SUPABASE_CONFIG = {
     // Your actual Supabase URL and keys
     url: 'https://srpspzgemnfxkqalgjmz.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycHNwemdlbW5meGtxYWxnam16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2ODU3ODcsImV4cCI6MjA2ODI2MTc4N30.C6HQUJNn3wY41dPwMOh3-A8NnC4HkibNWgAweJZl0Ok',
-    serviceRoleKey: 'YOUR_SERVICE_ROLE_KEY', // For admin operations (keep secret!)
+    serviceRoleKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycHNwemdlbW5meGtxYWxnam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY4NTc4NywiZXhwIjoyMDY4MjYxNzg3fQ.gs0HWCRjDlp81mvx28DKfRN0MFK2JjJbIf4aBJThl2M',
     
     // Database connection details (for reference)
     databaseUrl: 'postgresql://postgres.srpspzgemnfxkqalgjmz:uK6akoE2GSB4s04i@aws-0-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true',

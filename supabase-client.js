@@ -368,6 +368,133 @@ class DatabaseService {
         }
     }
 
+    /**
+     * Upload file to any specified bucket
+     * @param {File} file - The file to upload
+     * @param {string} bucketName - The name of the bucket
+     * @param {string} subfolder - Optional subfolder within the bucket
+     * @param {string} altText - Optional alt text for images
+     * @returns {Object} Upload result with URL or error
+     */
+    async uploadToBucket(file, bucketName, subfolder = '', altText = '') {
+        try {
+            // Sanitize filename - remove spaces and special characters
+            const sanitizedFileName = file.name
+                .replace(/\s+/g, '-')           // Replace spaces with hyphens
+                .replace(/[^a-zA-Z0-9.-]/g, '') // Remove special characters except dots and hyphens
+                .toLowerCase();                 // Convert to lowercase
+            
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const fileName = `${timestamp}-${sanitizedFileName}`;
+            const filePath = subfolder ? `${subfolder}/${fileName}` : fileName;
+
+            console.log(`📤 Uploading ${fileName} to ${bucketName}/${filePath}...`);
+            console.log(`📁 Original filename: ${file.name}`);
+            console.log(`🧹 Sanitized filename: ${sanitizedFileName}`);
+
+            // For admin uploads, we need to use a client with service role permissions
+            // Create a temporary client with service role key for this upload
+            const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js');
+            const serviceRoleClient = createClient(
+                SUPABASE_CONFIG.url, 
+                SUPABASE_CONFIG.serviceRoleKey
+            );
+
+            // Upload file to specified bucket using service role client
+            const { data: uploadData, error: uploadError } = await serviceRoleClient.storage
+                .from(bucketName)
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+                throw uploadError;
+            }
+
+            // Get public URL using regular client
+            const { data: urlData } = this.supabase.storage
+                .from(bucketName)
+                .getPublicUrl(filePath);
+
+            console.log(`✅ Upload successful: ${urlData.publicUrl}`);
+
+            return { 
+                url: urlData.publicUrl, 
+                fileName: fileName,
+                filePath: filePath,
+                bucketName: bucketName,
+                originalFileName: file.name,
+                error: null 
+            };
+        } catch (error) {
+            console.error('Upload to bucket error:', error);
+            return { url: null, error: error.message };
+        }
+    }
+
+    /**
+     * List files in a specific bucket
+     * @param {string} bucketName - The name of the bucket
+     * @param {string} path - Optional path within the bucket
+     * @param {number} limit - Maximum number of files to return
+     * @returns {Object} List of files or error
+     */
+    async listBucketFiles(bucketName, path = '', limit = 100) {
+        try {
+            const { data, error } = await this.supabase.storage
+                .from(bucketName)
+                .list(path, {
+                    limit: limit,
+                    offset: 0,
+                    sortBy: { column: 'created_at', order: 'desc' }
+                });
+
+            if (error) throw error;
+
+            return { files: data, error: null };
+        } catch (error) {
+            console.error('List bucket files error:', error);
+            return { files: [], error: error.message };
+        }
+    }
+
+    /**
+     * Delete file from bucket
+     * @param {string} bucketName - The name of the bucket
+     * @param {string} filePath - The path to the file within the bucket
+     * @returns {Object} Success or error result
+     */
+    async deleteFromBucket(bucketName, filePath) {
+        try {
+            const { error } = await this.supabase.storage
+                .from(bucketName)
+                .remove([filePath]);
+
+            if (error) throw error;
+
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Delete from bucket error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get public URL for a file in any bucket
+     * @param {string} bucketName - The name of the bucket
+     * @param {string} filePath - The path to the file within the bucket
+     * @returns {string} Public URL
+     */
+    getPublicUrl(bucketName, filePath) {
+        const { data } = this.supabase.storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+        
+        return data.publicUrl;
+    }
+
     async getMedia(pageName) {
         try {
             const { data, error } = await this.supabase

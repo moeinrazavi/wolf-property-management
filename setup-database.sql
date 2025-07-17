@@ -91,7 +91,7 @@ ON CONFLICT (page_name, element_id, version) DO NOTHING;
 
 -- 5. Insert sample media content
 INSERT INTO media_content (page_name, element_id, file_name, file_url, file_type, alt_text, is_active) VALUES
-('index.html', 'wolf-logo', 'wolf-logo.png', 'images/wolf-logo.png', 'image/png', 'Wolf Property Management Logo', true),
+('index.html', 'wolf-logo', 'wolf-logo.png', 'https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/wolf-logo.png', 'image/png', 'Wolf Property Management Logo', true),
 ('index.html', 'hero-background', 'hero-bg.jpg', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80', 'image/jpeg', 'Hero background image', true)
 ON CONFLICT (page_name, element_id) DO NOTHING;
 

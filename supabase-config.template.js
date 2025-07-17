@@ -1,13 +1,15 @@
-// Supabase Configuration
+// Supabase Configuration Template
+// Copy this file to 'supabase-config.js' and fill in your actual values
+// NEVER commit the actual supabase-config.js file with real credentials
+
 const SUPABASE_CONFIG = {
-    // Your actual Supabase URL and keys
-    url: 'https://srpspzgemnfxkqalgjmz.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycHNwemdlbW5meGtxYWxnam16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2ODU3ODcsImV4cCI6MjA2ODI2MTc4N30.C6HQUJNn3wY41dPwMOh3-A8NnC4HkibNWgAweJZl0Ok',
-    serviceRoleKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycHNwemdlbW5meGtxYWxnam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY4NTc4NywiZXhwIjoyMDY4MjYxNzg3fQ.gs0HWCRjDlp81mvx28DKfRN0MFK2JjJbIf4aBJThl2M'
+    // Get these from your Supabase Dashboard > Settings > API
+    url: 'https://YOUR_PROJECT_ID.supabase.co',
+    anonKey: 'YOUR_ANON_KEY_HERE',
+    serviceRoleKey: 'YOUR_SERVICE_ROLE_KEY_HERE' // Keep this secret!
     
-    // Note: Database connection URLs removed for security
+    // Note: Database connection URLs are not needed for frontend operations
     // The Supabase client handles all database connections automatically
-    // No direct PostgreSQL connection needed for frontend operations
 };
 
 // Database table schemas

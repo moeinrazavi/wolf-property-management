@@ -427,6 +427,11 @@ class AboutAdminManager {
             }
         };
 
+        // Add real-time validation while typing
+        element.addEventListener('input', () => {
+            this.showFieldLengthWarning(element, memberId);
+        });
+
         element.addEventListener('blur', finishEditing, { once: true });
         element.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -452,6 +457,13 @@ class AboutAdminManager {
             return;
         }
         
+        // Validate field length
+        const validation = this.validateFieldLength(fieldName, newValue);
+        if (!validation.valid) {
+            alert(`❌ ${validation.error}\n\nPlease shorten the content before saving.`);
+            return;
+        }
+        
         // Track the change as pending
         this.trackMemberChange(memberId, { [fieldName]: newValue });
         
@@ -459,6 +471,130 @@ class AboutAdminManager {
         member[fieldName] = newValue;
         
         console.log('✅ Field change tracked as pending');
+    }
+
+    /**
+     * Validate field length based on database constraints
+     */
+    validateFieldLength(fieldName, value) {
+        if (!value) return { valid: true };
+        
+        const textValue = typeof value === 'string' ? value : value.toString();
+        let maxLength;
+        
+        // Set maximum lengths based on database schema
+        switch (fieldName) {
+            case 'name':
+            case 'position':
+            case 'image_filename':
+                maxLength = 500;
+                break;
+            case 'bio':
+            case 'bio_paragraph_2':
+                maxLength = 10000; // TEXT fields can be very long
+                break;
+            case 'linkedin_url':
+            case 'email':
+                maxLength = 2000; // TEXT fields
+                break;
+            case 'page_name':
+                maxLength = 200;
+                break;
+            default:
+                // Default for any other potential fields
+                maxLength = 1000;
+        }
+        
+        if (textValue.length > maxLength) {
+            return {
+                valid: false,
+                error: `${fieldName.replace('_', ' ')} is too long (${textValue.length} characters). Maximum allowed: ${maxLength} characters.`
+            };
+        }
+        
+        return { valid: true };
+    }
+
+    /**
+     * Show real-time field length warning while editing
+     */
+    showFieldLengthWarning(element, memberId) {
+        const fieldName = element.dataset.field;
+        const textContent = element.textContent || element.innerText || '';
+        
+        // Remove existing warning
+        const existingWarning = element.parentNode.querySelector('.length-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+        
+        const validation = this.validateFieldLength(fieldName, textContent);
+        
+        // Show warning if approaching limit (90% of max) or exceeding
+        if (textContent.length > 0) {
+            let maxLength;
+            switch (fieldName) {
+                case 'name':
+                case 'position':
+                case 'image_filename':
+                    maxLength = 500;
+                    break;
+                case 'bio':
+                case 'bio_paragraph_2':
+                    maxLength = 10000;
+                    break;
+                case 'linkedin_url':
+                case 'email':
+                    maxLength = 2000;
+                    break;
+                case 'page_name':
+                    maxLength = 200;
+                    break;
+                default:
+                    maxLength = 500;
+            }
+            
+            if (textContent.length > maxLength * 0.9 || !validation.valid) {
+                const warning = document.createElement('div');
+                warning.className = 'length-warning';
+                warning.style.cssText = `
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    background: ${!validation.valid ? '#e74c3c' : '#f39c12'};
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    z-index: 1000;
+                    white-space: nowrap;
+                    margin-top: 2px;
+                `;
+                
+                if (!validation.valid) {
+                    warning.textContent = `⚠️ Too long! ${textContent.length}/${maxLength} chars`;
+                    element.style.border = '2px solid #e74c3c';
+                } else {
+                    warning.textContent = `⚠️ ${textContent.length}/${maxLength} chars`;
+                    element.style.border = '2px solid #f39c12';
+                }
+                
+                // Position relative to element
+                element.parentNode.style.position = 'relative';
+                element.parentNode.appendChild(warning);
+                
+                // Auto-hide after 3 seconds if not exceeding limit
+                if (validation.valid) {
+                    setTimeout(() => {
+                        if (warning.parentNode) {
+                            warning.remove();
+                        }
+                    }, 3000);
+                }
+            } else {
+                element.style.border = '2px solid #3498db';
+            }
+        }
     }
 
     /**

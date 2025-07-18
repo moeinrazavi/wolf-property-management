@@ -648,6 +648,7 @@ class DatabaseService {
     async saveTeamMember(teamMemberData) {
         try {
             console.log('💾 Saving team member:', teamMemberData.name);
+            console.log('📋 Full team member data:', teamMemberData);
             
             // Filter out UI-only properties that shouldn't be saved to database
             const { isNew, isPending, hasChanges, ...dbData } = teamMemberData;
@@ -660,10 +661,44 @@ class DatabaseService {
                 delete dbData.id;
             }
             
+            // Debug: Log all field lengths
+            console.log('📊 Field lengths being saved:');
+            Object.keys(dbData).forEach(key => {
+                const value = dbData[key];
+                if (typeof value === 'string') {
+                    const preview = value.length > 50 ? value.substring(0, 50) + '...' : value;
+                    console.log(`  ${key}: ${value.length} chars - "${preview}"`);
+                } else {
+                    console.log(`  ${key}: ${typeof value} - ${value}`);
+                }
+            });
+            
+            // Validate field lengths to prevent VARCHAR overflow
+            const validationErrors = [];
+            if (dbData.name && dbData.name.length > 500) {
+                validationErrors.push(`Name too long (${dbData.name.length} chars, max 500)`);
+            }
+            if (dbData.position && dbData.position.length > 500) {
+                validationErrors.push(`Position too long (${dbData.position.length} chars, max 500)`);
+            }
+            if (dbData.image_filename && dbData.image_filename.length > 500) {
+                validationErrors.push(`Image filename too long (${dbData.image_filename.length} chars, max 500)`);
+            }
+            if (dbData.page_name && dbData.page_name.length > 200) {
+                validationErrors.push(`Page name too long (${dbData.page_name.length} chars, max 200)`);
+            }
+            
+            if (validationErrors.length > 0) {
+                console.error('❌ Validation errors:', validationErrors);
+                throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+            }
+            
             const memberData = {
                 ...dbData,
                 updated_at: new Date().toISOString()
             };
+            
+            console.log('📤 Data being sent to database:', memberData);
 
             let result;
             if (!isNewMember) {

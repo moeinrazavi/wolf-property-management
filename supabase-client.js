@@ -435,27 +435,83 @@ class DatabaseService {
     }
 
     /**
-     * List files in a specific bucket
+     * List files in a specific bucket (recursively searches all subfolders)
      * @param {string} bucketName - The name of the bucket
      * @param {string} path - Optional path within the bucket
      * @param {number} limit - Maximum number of files to return
      * @returns {Object} List of files or error
      */
-    async listBucketFiles(bucketName, path = '', limit = 100) {
+    async listBucketFiles(bucketName, path = '', limit = 1000) {
         try {
-            const { data, error } = await this.supabase.storage
-                .from(bucketName)
-                .list(path, {
-                    limit: limit,
-                    offset: 0,
-                    sortBy: { column: 'created_at', order: 'desc' }
-                });
+            console.log(`📁 Listing files in bucket: ${bucketName}, path: "${path}", limit: ${limit}`);
+            
+            // For admin operations on private buckets, use service role client
+            const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js');
+            const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycHNwemdlbW5meGtxYWxnam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY4NTc4NywiZXhwIjoyMDY4MjYxNzg3fQ.gs0HWCRjDlp81mvx28DKfRN0MFK2JjJbIf4aBJThl2M';
+            const supabaseUrl = this.supabase.supabaseUrl;
+            
+            const serviceRoleClient = createClient(supabaseUrl, serviceRoleKey);
 
-            if (error) throw error;
+            console.log(`🔑 Using service role key for bucket access`);
 
-            return { files: data, error: null };
+            // Function to recursively list files in all directories
+            const getAllFiles = async (currentPath = '') => {
+                console.log(`🔍 Scanning path: "${currentPath}"`);
+                
+                const { data, error } = await serviceRoleClient.storage
+                    .from(bucketName)
+                    .list(currentPath, {
+                        limit: 1000,
+                        offset: 0,
+                        sortBy: { column: 'created_at', order: 'desc' }
+                    });
+
+                if (error) {
+                    console.error(`❌ Error listing path "${currentPath}":`, error);
+                    throw error;
+                }
+
+                console.log(`📋 Found ${data?.length || 0} items in path "${currentPath}"`);
+
+                let allFiles = [];
+                
+                for (const item of data || []) {
+                    if (item.id === null) {
+                        // This is a folder, recurse into it
+                        console.log(`📁 Found folder: ${item.name}, recursing...`);
+                        const subPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+                        const subFiles = await getAllFiles(subPath);
+                        allFiles = allFiles.concat(subFiles);
+                    } else {
+                        // This is a file, add full path info
+                        const fileWithPath = {
+                            ...item,
+                            fullPath: currentPath ? `${currentPath}/${item.name}` : item.name
+                        };
+                        console.log(`📄 Found file: ${fileWithPath.fullPath}`);
+                        allFiles.push(fileWithPath);
+                    }
+                }
+
+                return allFiles;
+            };
+
+            // Get all files recursively
+            const allFiles = await getAllFiles(path);
+
+            console.log(`✅ Successfully found ${allFiles.length} total files in bucket ${bucketName}`);
+            console.log(`📋 All files:`, allFiles.map(f => f.fullPath || f.name));
+
+            return { files: allFiles, error: null };
         } catch (error) {
-            console.error('List bucket files error:', error);
+            console.error('❌ List bucket files error:', error);
+            console.error('❌ Error details:', {
+                bucketName,
+                path,
+                limit,
+                errorMessage: error.message,
+                errorCode: error.statusCode || 'unknown'
+            });
             return { files: [], error: error.message };
         }
     }
@@ -482,6 +538,42 @@ class DatabaseService {
     }
 
     /**
+     * Get signed URL for a file in a private bucket
+     * @param {string} bucketName - The name of the bucket
+     * @param {string} filePath - The path to the file within the bucket
+     * @param {number} expiresIn - Expiration time in seconds (default 99 years)
+     * @returns {Object} Signed URL result
+     */
+    async getSignedUrl(bucketName, filePath, expiresIn = 3124224000) {
+        try {
+            console.log(`🔐 Creating signed URL for: ${bucketName}/${filePath} (expires in ${expiresIn} seconds = ${Math.round(expiresIn / (365 * 24 * 60 * 60))} years)`);
+            
+            // Use service role client for private bucket access
+            const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js');
+            const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycHNwemdlbW5meGtxYWxnam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY4NTc4NywiZXhwIjoyMDY4MjYxNzg3fQ.gs0HWCRjDlp81mvx28DKfRN0MFK2JjJbIf4aBJThl2M';
+            const supabaseUrl = this.supabase.supabaseUrl;
+            
+            const serviceRoleClient = createClient(supabaseUrl, serviceRoleKey);
+
+            const { data, error } = await serviceRoleClient.storage
+                .from(bucketName)
+                .createSignedUrl(filePath, expiresIn);
+
+            if (error) {
+                console.error(`❌ Error creating signed URL for ${filePath}:`, error);
+                throw error;
+            }
+
+            console.log(`✅ Created long-term signed URL for ${filePath}: ${data.signedUrl}`);
+            return { signedUrl: data.signedUrl, error: null };
+            
+        } catch (error) {
+            console.error('❌ Get signed URL error:', error);
+            return { signedUrl: null, error: error.message };
+        }
+    }
+
+    /**
      * Get public URL for a file in any bucket
      * @param {string} bucketName - The name of the bucket
      * @param {string} filePath - The path to the file within the bucket
@@ -493,6 +585,22 @@ class DatabaseService {
             .getPublicUrl(filePath);
         
         return data.publicUrl;
+    }
+
+    /**
+     * Get appropriate URL for file (signed for private buckets, public for public buckets)
+     * @param {string} bucketName - The name of the bucket
+     * @param {string} filePath - The path to the file within the bucket
+     * @param {boolean} isPrivate - Whether the bucket is private (default true for wolf-property-images)
+     * @returns {Promise<string>} URL for the file
+     */
+    async getFileUrl(bucketName, filePath, isPrivate = true) {
+        if (isPrivate) {
+            const result = await this.getSignedUrl(bucketName, filePath);
+            return result.signedUrl || this.getPublicUrl(bucketName, filePath);
+        } else {
+            return this.getPublicUrl(bucketName, filePath);
+        }
     }
 
     async getMedia(pageName) {

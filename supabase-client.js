@@ -620,6 +620,255 @@ class DatabaseService {
         }
     }
 
+    // Team Members methods
+    async getTeamMembers(pageName = 'about.html') {
+        try {
+            console.log(`📋 Getting team members for page: ${pageName}`);
+            
+            const { data, error } = await this.supabase
+                .from('team_members')
+                .select('*')
+                .eq('page_name', pageName)
+                .eq('is_active', true)
+                .order('sort_order');
+
+            if (error) {
+                console.error('Get team members error:', error);
+                return { teamMembers: [], error: error.message };
+            }
+
+            console.log(`✅ Found ${data?.length || 0} team members`);
+            return { teamMembers: data || [], error: null };
+        } catch (error) {
+            console.error('Get team members error:', error);
+            return { teamMembers: [], error: error.message };
+        }
+    }
+
+    async saveTeamMember(teamMemberData) {
+        try {
+            console.log('💾 Saving team member:', teamMemberData.name);
+            console.log('📋 Full team member data:', teamMemberData);
+            
+            // Filter out UI-only properties that shouldn't be saved to database
+            const { isNew, isPending, hasChanges, ...dbData } = teamMemberData;
+            
+            // Check if this is a new member with temporary ID
+            const isNewMember = !teamMemberData.id || teamMemberData.id.startsWith('temp_');
+            
+            // For new members, exclude the temporary ID so database can auto-generate proper UUID
+            if (isNewMember) {
+                delete dbData.id;
+            }
+            
+            // Debug: Log all field lengths
+            console.log('📊 Field lengths being saved:');
+            Object.keys(dbData).forEach(key => {
+                const value = dbData[key];
+                if (typeof value === 'string') {
+                    const preview = value.length > 50 ? value.substring(0, 50) + '...' : value;
+                    console.log(`  ${key}: ${value.length} chars - "${preview}"`);
+                } else {
+                    console.log(`  ${key}: ${typeof value} - ${value}`);
+                }
+            });
+            
+            // Validate field lengths to prevent VARCHAR overflow
+            const validationErrors = [];
+            if (dbData.name && dbData.name.length > 500) {
+                validationErrors.push(`Name too long (${dbData.name.length} chars, max 500)`);
+            }
+            if (dbData.position && dbData.position.length > 500) {
+                validationErrors.push(`Position too long (${dbData.position.length} chars, max 500)`);
+            }
+            if (dbData.image_filename && dbData.image_filename.length > 500) {
+                validationErrors.push(`Image filename too long (${dbData.image_filename.length} chars, max 500)`);
+            }
+            if (dbData.page_name && dbData.page_name.length > 200) {
+                validationErrors.push(`Page name too long (${dbData.page_name.length} chars, max 200)`);
+            }
+            
+            if (validationErrors.length > 0) {
+                console.error('❌ Validation errors:', validationErrors);
+                throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+            }
+            
+            const memberData = {
+                ...dbData,
+                updated_at: new Date().toISOString()
+            };
+            
+            console.log('📤 Data being sent to database:', memberData);
+
+            let result;
+            if (!isNewMember) {
+                // Update existing member
+                const { data, error } = await this.supabase
+                    .from('team_members')
+                    .update(memberData)
+                    .eq('id', teamMemberData.id)
+                    .select()
+                    .single();
+                
+                result = { data, error };
+            } else {
+                // Insert new member
+                const { data, error } = await this.supabase
+                    .from('team_members')
+                    .insert(memberData)
+                    .select()
+                    .single();
+                
+                result = { data, error };
+            }
+
+            if (result.error) {
+                console.error('Save team member error:', result.error);
+                return { teamMember: null, error: result.error.message };
+            }
+
+            console.log('✅ Team member saved successfully');
+            return { teamMember: result.data, error: null };
+        } catch (error) {
+            console.error('Save team member error:', error);
+            return { teamMember: null, error: error.message };
+        }
+    }
+
+    async deleteTeamMember(memberId) {
+        try {
+            console.log(`🗑️ Deleting team member: ${memberId}`);
+            
+            const { error } = await this.supabase
+                .from('team_members')
+                .update({ is_active: false })
+                .eq('id', memberId);
+
+            if (error) {
+                console.error('Delete team member error:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Team member deleted successfully');
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Delete team member error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async initializeTeamMembersTable() {
+        try {
+            console.log('🔧 Initializing team_members table...');
+            
+            // First check if table exists
+            const { data: existingMembers, error: checkError } = await this.supabase
+                .from('team_members')
+                .select('count')
+                .limit(1);
+
+            if (checkError) {
+                console.log('📋 Team members table does not exist, creating...');
+                // Table doesn't exist, we need to create it using direct SQL
+                const createTableSQL = `
+                    -- Create team_members table
+                    CREATE TABLE IF NOT EXISTS team_members (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        position VARCHAR(255) NOT NULL,
+                        bio TEXT,
+                        bio_paragraph_2 TEXT,
+                        image_url TEXT,
+                        image_filename VARCHAR(255),
+                        linkedin_url TEXT,
+                        email TEXT,
+                        sort_order INTEGER DEFAULT 0,
+                        is_active BOOLEAN DEFAULT true,
+                        page_name VARCHAR(100) DEFAULT 'about.html',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    );
+
+                    -- Create indexes
+                    CREATE INDEX IF NOT EXISTS idx_team_members_active ON team_members(is_active);
+                    CREATE INDEX IF NOT EXISTS idx_team_members_page ON team_members(page_name);
+                    CREATE INDEX IF NOT EXISTS idx_team_members_sort ON team_members(sort_order);
+
+                    -- Disable RLS for now
+                    ALTER TABLE team_members DISABLE ROW LEVEL SECURITY;
+                `;
+
+                console.log('⚠️ Please run the following SQL in your Supabase SQL Editor:');
+                console.log(createTableSQL);
+                
+                return { 
+                    success: false, 
+                    error: 'team_members table needs to be created. Please run the SQL script in Supabase SQL Editor.',
+                    sql: createTableSQL
+                };
+            }
+
+            console.log('✅ Team members table exists');
+            
+            // Check if we have existing members
+            const { data: members } = await this.supabase
+                .from('team_members')
+                .select('*')
+                .eq('page_name', 'about.html')
+                .eq('is_active', true);
+
+            if (!members || members.length === 0) {
+                console.log('📝 No team members found, inserting default members...');
+                
+                // Insert default team members
+                const defaultMembers = [
+                    {
+                        name: 'Adam Starr',
+                        position: 'Owner, Real Estate Broker & Certified Public Accountant',
+                        bio: 'A Georgetown native and Texas A&M University graduate, Adam brings a unique combination of real estate expertise and financial acumen to Wolf Property Management. His background as a CPA and real estate broker provides our clients with comprehensive property management solutions.',
+                        bio_paragraph_2: 'Beyond his professional achievements, Adam is an active member of the Georgetown community, fluent in Spanish, and enjoys various sports including ice hockey and skiing.',
+                        image_url: 'https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/people/adam_starr.png',
+                        image_filename: 'adam_starr.png',
+                        linkedin_url: '#',
+                        email: '#',
+                        sort_order: 1,
+                        is_active: true,
+                        page_name: 'about.html'
+                    },
+                    {
+                        name: 'Patricia Holmes',
+                        position: 'Office Manager',
+                        bio: 'With over a decade of experience in Georgetown\'s real estate market, Patricia brings a wealth of knowledge in property management, mortgage lending, and insurance. Her diverse background enables her to provide comprehensive support to both property owners and tenants.',
+                        bio_paragraph_2: 'Patricia\'s dedication to excellence and her passion for community engagement make her an invaluable member of our team.',
+                        image_url: 'https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/people/patricia_holmes.jpg',
+                        image_filename: 'patricia_holmes.jpg',
+                        linkedin_url: '#',
+                        email: '#',
+                        sort_order: 2,
+                        is_active: true,
+                        page_name: 'about.html'
+                    }
+                ];
+
+                const { error: insertError } = await this.supabase
+                    .from('team_members')
+                    .insert(defaultMembers);
+
+                if (insertError) {
+                    console.error('Error inserting default team members:', insertError);
+                    return { success: false, error: insertError.message };
+                }
+
+                console.log('✅ Default team members inserted');
+            }
+
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Initialize team members table error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Utility methods
     getCurrentUser() {
         return this.currentUser;

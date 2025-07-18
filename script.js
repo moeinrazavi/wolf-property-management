@@ -3,13 +3,17 @@ console.log('Script loaded');
 // Import Supabase database service
 import dbService from './supabase-client.js';
 
+// Import new version control system
+import adminVersionControlUI from './admin-version-control-ui.js';
+
+// Make objects globally available for debugging
+window.adminVersionControlUI = adminVersionControlUI;
+window.dbService = dbService;
+
 // Global variables
 let isAdminLoggedIn = false;
 let hasUnsavedChanges = false;
 let originalContent = {};
-let currentVersion = 0;
-let versionHistory = [];
-const MAX_VERSIONS = 10;
 
 // Get current page name
 const currentPage = window.location.pathname.split('/').pop() || 'index.html';
@@ -62,9 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load content from Supabase
     loadContentFromDatabase();
-    
-    // Load version history from Supabase
-    loadVersionHistoryFromDatabase();
 
     // Admin System Initialization
     initializeAdminSystem();
@@ -254,47 +255,7 @@ async function loadContentFromDatabase() {
     }
 }
 
-async function loadVersionHistoryFromDatabase() {
-    try {
-        console.log('Loading version history from Supabase...');
-        const { versions, error } = await dbService.getVersionHistory(currentPage);
-        
-        if (error) {
-            console.error('Error loading version history:', error);
-            versionHistory = [];
-            currentVersion = 0;
-            return;
-        }
-        
-        versionHistory = versions;
-        currentVersion = versions.length > 0 ? versions[0].version_number : 0;
-        
-        console.log('Version history loaded:', versionHistory.length, 'versions');
-    } catch (error) {
-        console.error('Error loading version history from database:', error);
-        versionHistory = [];
-        currentVersion = 0;
-    }
-}
-
-function saveVersionHistory() {
-    // This function is no longer needed with Supabase
-    // Version history is stored in the database
-    console.log('saveVersionHistory() is deprecated - versions are stored in database');
-}
-
-function createNewVersion(changes, description = '') {
-    // This function is no longer needed with Supabase
-    // Versions are created directly in the database
-    console.log('createNewVersion() is deprecated - versions are created in database');
-    return null;
-}
-
-// This function is no longer needed with Supabase
-// All content is loaded directly from the database
-function applySavedChanges() {
-    console.log('applySavedChanges() is deprecated - content is loaded from database');
-}
+// Version control functions removed - replaced by new VersionControlManager
 
 function findElementsBySelector(elementId) {
     // Try different approaches to find the element
@@ -350,15 +311,7 @@ function isElementMatch(element, elementId) {
     return currentId === elementId;
 }
 
-function updateVersionDisplay() {
-    const versionInfo = document.querySelector('.version-info');
-    if (versionInfo) {
-        versionInfo.innerHTML = `
-            <span>Current Version: ${currentVersion}</span>
-            <span>Total Versions: ${versionHistory.length}</span>
-        `;
-    }
-}
+// updateVersionDisplay function removed - replaced by new VersionControlManager
 
 // Admin System Functions
 function initializeAdminSystem() {
@@ -446,25 +399,51 @@ function initializeAdminSystem() {
     });
 }
 
-function loginAdmin() {
+async function loginAdmin() {
     isAdminLoggedIn = true;
     
     // Show admin controls
     document.getElementById('admin-controls').style.display = 'block';
     document.body.classList.add('admin-mode');
     
+    // Initialize new version control system
+    try {
+        await adminVersionControlUI.initialize();
+        console.log('✅ Version control system initialized');
+        
+        // Start modification session
+        await adminVersionControlUI.startModificationSession('Admin login - content editing session');
+        
+    } catch (error) {
+        console.error('❌ Failed to initialize version control:', error);
+        alert('Warning: Version control system failed to initialize. Some features may not work properly.');
+    }
+    
     // Make text content editable
     makeContentEditable();
-    
-    // Add version controls
-    addVersionControls();
     
     console.log('Admin logged in successfully');
 }
 
 async function logoutAdmin() {
+    // Check for unsaved changes
+    if (adminVersionControlUI.isReady() && adminVersionControlUI.getVersionControlManager().hasChanges()) {
+        const hasChanges = window.confirm(
+            'You have unsaved changes that will be lost if you logout.\n\n' +
+            'Click "OK" to logout without saving, or "Cancel" to stay and save your changes.'
+        );
+        if (!hasChanges) {
+            return; // Cancel logout
+        }
+    }
+    
     await dbService.signOut();
     isAdminLoggedIn = false;
+    
+    // Clean up version control system
+    if (adminVersionControlUI.isReady()) {
+        adminVersionControlUI.cleanup();
+    }
     
     // Hide admin controls
     document.getElementById('admin-controls').style.display = 'none';
@@ -473,9 +452,6 @@ async function logoutAdmin() {
     // Remove editable functionality
     removeEditableContent();
     
-    // Remove version controls
-    removeVersionControls();
-    
     // Reset changes
     hasUnsavedChanges = false;
     originalContent = {};
@@ -483,93 +459,7 @@ async function logoutAdmin() {
     console.log('Admin logged out');
 }
 
-function addVersionControls() {
-    const adminControls = document.querySelector('.admin-controls-content');
-    
-    // Add version info
-    const versionInfo = document.createElement('div');
-    versionInfo.className = 'version-info';
-    versionInfo.innerHTML = `
-        <span>Current Version: ${currentVersion}</span>
-        <span>Total Versions: ${versionHistory.length}</span>
-    `;
-    
-    // Add save changes button
-    const saveButton = document.createElement('button');
-    saveButton.id = 'save-changes-btn';
-    saveButton.className = 'save-changes-btn';
-    saveButton.disabled = !hasUnsavedChanges;
-    saveButton.textContent = hasUnsavedChanges ? 'Save Changes' : 'No Changes to Save';
-    saveButton.addEventListener('click', () => {
-        if (hasUnsavedChanges) {
-            saveChanges();
-        } else {
-            alert('No changes to save.');
-        }
-    });
-    
-    // Add refresh content button
-    const refreshButton = document.createElement('button');
-    refreshButton.id = 'refresh-content-btn';
-    refreshButton.className = 'refresh-content-btn';
-    refreshButton.textContent = 'Refresh from Database';
-    refreshButton.addEventListener('click', async () => {
-        refreshButton.textContent = 'Refreshing...';
-        refreshButton.disabled = true;
-        
-        try {
-            await loadContentFromDatabase();
-            await loadVersionHistoryFromDatabase();
-            
-            // Reset original content
-            document.querySelectorAll('.editable-text').forEach(element => {
-                const elementId = element.getAttribute('data-editable-id');
-                if (elementId) {
-                    originalContent[elementId] = element.textContent;
-                }
-            });
-            
-            hasUnsavedChanges = false;
-            updateSaveStatus();
-            
-            alert('Content refreshed from database successfully!');
-        } catch (error) {
-            alert(`Refresh failed: ${error.message}`);
-        } finally {
-            refreshButton.textContent = 'Refresh from Database';
-            refreshButton.disabled = false;
-        }
-    });
-    
-    // Add version controls
-    const versionControls = document.createElement('div');
-    versionControls.className = 'version-controls';
-    versionControls.innerHTML = `
-        <button id="version-history-btn" class="version-btn">Version History</button>
-        <button id="export-changes-btn" class="version-btn">Export Changes</button>
-        <button id="import-changes-btn" class="version-btn">Import Changes</button>
-        <button id="clear-history-btn" class="version-btn version-btn-danger">Clear History</button>
-    `;
-    
-    adminControls.appendChild(versionInfo);
-    adminControls.appendChild(saveButton);
-    adminControls.appendChild(refreshButton);
-    adminControls.appendChild(versionControls);
-    
-    // Add event listeners
-    document.getElementById('version-history-btn').addEventListener('click', showVersionHistory);
-    document.getElementById('export-changes-btn').addEventListener('click', exportChanges);
-    document.getElementById('import-changes-btn').addEventListener('click', importChanges);
-    document.getElementById('clear-history-btn').addEventListener('click', clearVersionHistory);
-}
-
-function removeVersionControls() {
-    const versionInfo = document.querySelector('.version-info');
-    const versionControls = document.querySelector('.version-controls');
-    
-    if (versionInfo) versionInfo.remove();
-    if (versionControls) versionControls.remove();
-}
+// Version control UI functions removed - replaced by new VersionControlManager
 
 function makeContentEditable() {
     // Select text elements that should be editable
@@ -703,7 +593,22 @@ function saveEdit(element, newText, elementId) {
         // Update the element content
         element.textContent = trimmedNewText;
         
-        // Mark as having unsaved changes
+        // Track modification in version control system
+        if (adminVersionControlUI.isReady()) {
+            adminVersionControlUI.trackModification(
+                'content', 
+                elementId, 
+                originalText, 
+                trimmedNewText,
+                {
+                    page: currentPage,
+                    elementType: element.tagName.toLowerCase(),
+                    timestamp: new Date().toISOString()
+                }
+            );
+        }
+        
+        // Mark as having unsaved changes (legacy)
         hasUnsavedChanges = true;
         updateSaveStatus();
         
@@ -900,153 +805,7 @@ function showSaveModal() {
     document.getElementById('save-modal').style.display = 'block';
 }
 
-async function saveChanges() {
-    console.log('🔄 Starting save process...');
-    
-    // Collect all changes from current editable elements
-    const changes = {};
-    let changeCount = 0;
-    
-    // Collect the new changes
-    document.querySelectorAll('.editable-text').forEach(element => {
-        const elementId = element.getAttribute('data-editable-id');
-        if (elementId) {
-            const currentText = element.textContent.trim();
-            const originalText = originalContent[elementId] || '';
-            
-            // Only include if content has actually changed
-            if (currentText !== originalText) {
-                changes[elementId] = currentText;
-                changeCount++;
-                console.log(`📝 Change detected: ${elementId} -> "${currentText}"`);
-            }
-        }
-    });
-    
-    console.log(`📊 Total changes to save: ${changeCount}`);
-    
-    if (changeCount === 0) {
-        alert('No changes to save.');
-        return;
-    }
-    
-    // Show loading state
-    const saveButton = document.getElementById('save-changes-btn');
-    const originalText = saveButton.textContent;
-    saveButton.textContent = 'Saving...';
-    saveButton.disabled = true;
-    
-    try {
-        console.log('💾 Saving changes to Supabase:', changes);
-        
-        // Step 1: Get current version number
-        console.log('🔢 Getting current version number...');
-        const { data: versionData, error: versionQueryError } = await dbService.supabase
-            .from('version_history')
-            .select('version_number')
-            .eq('page_name', currentPage)
-            .order('version_number', { ascending: false })
-            .limit(1);
-
-        if (versionQueryError) {
-            console.error('❌ Version query error:', versionQueryError);
-            throw new Error(`Could not get version number: ${versionQueryError.message}`);
-        }
-
-        const nextVersion = versionData && versionData.length > 0 ? versionData[0].version_number + 1 : 1;
-        console.log(`📈 Next version will be: ${nextVersion}`);
-        
-        // Step 2: Save content to database
-        console.log('📚 Saving content items to database...');
-        let successCount = 0;
-        
-        for (const [elementId, contentText] of Object.entries(changes)) {
-            const contentData = {
-                page_name: currentPage,
-                element_id: elementId,
-                content_text: contentText,
-                content_type: 'text',
-                version: nextVersion,
-                is_active: true,
-                updated_at: new Date().toISOString()
-            };
-            
-            console.log(`💾 Saving: ${elementId}...`);
-            
-            const { data: insertData, error: insertError } = await dbService.supabase
-                .from('website_content')
-                .upsert(contentData)
-                .select();
-                
-            if (insertError) {
-                console.error(`❌ Failed to save ${elementId}:`, insertError);
-                throw new Error(`Failed to save ${elementId}: ${insertError.message}`);
-            }
-            
-            console.log(`✅ Saved ${elementId} successfully:`, insertData);
-            successCount++;
-        }
-        
-        console.log(`✅ All ${successCount} content items saved successfully`);
-        
-        // Step 3: Save version history
-        console.log('📜 Saving version history...');
-        const versionHistoryData = {
-            version_number: nextVersion,
-            description: `Manual save - ${new Date().toLocaleString()} (${successCount} changes)`,
-            changes: changes,
-            page_name: currentPage,
-            created_by: dbService.currentUser?.id || null
-        };
-        
-        const { data: versionInsertData, error: versionError } = await dbService.supabase
-            .from('version_history')
-            .insert(versionHistoryData)
-            .select();
-
-        if (versionError) {
-            console.error('❌ Version history save error:', versionError);
-            throw new Error(`Could not save version history: ${versionError.message}`);
-        }
-        
-        console.log('✅ Version history saved:', versionInsertData);
-        
-        // Step 4: Verify the save by reloading content
-        console.log('🔄 Verifying save by reloading content...');
-        await loadContentFromDatabase();
-        
-        // Step 5: Update local state
-        console.log('🔄 Updating local state...');
-        Object.keys(changes).forEach(elementId => {
-            const element = document.querySelector(`[data-editable-id="${elementId}"]`);
-            if (element) {
-                originalContent[elementId] = element.textContent.trim();
-            }
-        });
-        
-        // Reload version history
-        await loadVersionHistoryFromDatabase();
-        
-        hasUnsavedChanges = false;
-        updateSaveStatus();
-        
-        console.log('🎉 Save completed successfully!');
-        alert(`✅ Changes saved successfully as version ${nextVersion}!\n\n${successCount} items updated.\nChanges are now permanent and visible to all users.`);
-        
-    } catch (error) {
-        console.error('💥 Save failed:', error);
-        alert(`❌ Save failed: ${error.message}\n\nPlease check the browser console for details.`);
-    } finally {
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
-    }
-}
-
-function getCurrentSavedChanges() {
-    // This function is no longer needed with Supabase
-    // All changes are now stored in the database
-    return {};
-}
+// saveChanges function removed - replaced by new VersionControlManager
 
 function applyChangesToDOM(changes) {
     // Apply changes to ensure they're visible immediately
@@ -1095,143 +854,7 @@ function updateSaveStatus() {
     }
 }
 
-// Version History Functions
-function showVersionHistory() {
-    const modal = document.createElement('div');
-    modal.className = 'version-history-modal';
-    modal.innerHTML = `
-        <div class="version-history-content">
-            <span class="version-close">&times;</span>
-            <h3>Version History</h3>
-            <p class="version-info-text">Each version represents the state BEFORE changes were made, allowing you to revert to previous states.</p>
-            <div class="version-list">
-                ${versionHistory.map(version => `
-                    <div class="version-item">
-                        <div class="version-header">
-                            <span class="version-number">Version ${version.version_number}</span>
-                            <span class="version-date">${new Date(version.created_at).toLocaleString()}</span>
-                        </div>
-                        <div class="version-description">${version.description}</div>
-                        <div class="version-details">
-                            <span class="version-changes">${Object.keys(version.changes).length} elements</span>
-                            <span class="version-page">${version.page_name}</span>
-                        </div>
-                        <div class="version-actions">
-                            <button class="version-restore-btn" data-version="${version.version_number}">Restore to This State</button>
-                            <button class="version-export-btn" data-version="${version.version_number}">Export This Version</button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Add event listeners
-    modal.querySelector('.version-close').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.remove();
-    });
-    
-    // Restore version
-    modal.querySelectorAll('.version-restore-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const versionNumber = parseInt(btn.getAttribute('data-version'));
-            await restoreVersion(versionNumber);
-            modal.remove();
-        });
-    });
-    
-    // Export version
-    modal.querySelectorAll('.version-export-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const versionId = parseInt(btn.getAttribute('data-version'));
-            exportVersion(versionId);
-        });
-    });
-}
-
-async function restoreVersion(versionNumber) {
-    const version = versionHistory.find(v => v.version_number === versionNumber);
-    if (!version) return;
-    
-    if (confirm(`Are you sure you want to restore to version ${versionNumber}? This will overwrite current changes.`)) {
-        try {
-            // Restore from database
-            const { success, error } = await dbService.restoreVersion(currentPage, versionNumber);
-            
-            if (error) {
-                alert(`Restore failed: ${error}`);
-                return;
-            }
-            
-            console.log(`Restored to version ${versionNumber} in database`);
-            
-            // Reload content from database to show the restored version
-            await loadContentFromDatabase();
-            
-            // Reload version history
-            await loadVersionHistoryFromDatabase();
-            
-            // Reset the original content to match what's now in the database
-            document.querySelectorAll('.editable-text').forEach(element => {
-                const elementId = element.getAttribute('data-editable-id');
-                if (elementId) {
-                    originalContent[elementId] = element.textContent;
-                }
-            });
-            
-            // Mark as having no unsaved changes since we just restored
-            hasUnsavedChanges = false;
-            updateSaveStatus();
-            
-            console.log(`Restored to version ${versionNumber}`);
-            alert(`Successfully restored to version ${versionNumber}!\n\nThe restored content is now live and visible to all users.`);
-            
-        } catch (error) {
-            alert(`Restore error: ${error.message}`);
-        }
-    }
-}
-
-function exportChanges() {
-    const changes = {};
-    document.querySelectorAll('.editable-text').forEach(element => {
-        const elementId = element.getAttribute('data-editable-id');
-        if (elementId) {
-            changes[elementId] = element.textContent;
-        }
-    });
-    
-    const exportData = {
-        changes: changes,
-        version: currentVersion,
-        timestamp: new Date().toISOString(),
-        page: window.location.pathname
-    };
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wolf-pm-changes-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function exportVersion(versionId) {
-    const version = versionHistory.find(v => v.id === versionId);
-    if (!version) return;
-    
-    const blob = new Blob([JSON.stringify(version, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wolf-pm-version-${versionId}-${new Date(version.timestamp).toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
+// All version history functions removed - replaced by new VersionControlManager
 
 function importChanges() {
     const input = document.createElement('input');
@@ -1278,49 +901,4 @@ function importChanges() {
     input.click();
 }
 
-async function clearVersionHistory() {
-    const warningMessage = `⚠️ WARNING: This action cannot be undone!\n\n` +
-                          `You are about to clear ALL version history (${versionHistory.length} versions).\n\n` +
-                          `This will:\n` +
-                          `• Delete all saved versions from the database\n` +
-                          `• Remove the ability to revert to previous states\n` +
-                          `• Keep your current changes intact\n\n` +
-                          `Are you absolutely sure you want to clear the version history?`;
-    
-    if (confirm(warningMessage)) {
-        // Double confirmation for safety
-        if (confirm('FINAL WARNING: This will permanently delete all version history from the database.\n\nType "YES" to confirm, or click Cancel to abort.')) {
-            try {
-                // Clear version history from Supabase
-                const { error } = await dbService.clearVersionHistory(currentPage);
-                
-                if (error) {
-                    alert(`Failed to clear version history: ${error}`);
-                    return;
-                }
-                
-                // Clear local version history
-                versionHistory = [];
-                currentVersion = 0;
-                
-                // Update display
-                updateVersionDisplay();
-                
-                // Update version controls
-                const versionInfo = document.querySelector('.version-info');
-                if (versionInfo) {
-                    versionInfo.innerHTML = `
-                        <span>Current Version: ${currentVersion}</span>
-                        <span>Total Versions: ${versionHistory.length}</span>
-                    `;
-                }
-                
-                console.log('Version history cleared from database');
-                alert('Version history has been cleared successfully from the database.\n\nNote: Your current changes remain intact.');
-                
-            } catch (error) {
-                alert(`Error clearing version history: ${error.message}`);
-            }
-        }
-    }
-}
+// clearVersionHistory function removed - replaced by new VersionControlManager

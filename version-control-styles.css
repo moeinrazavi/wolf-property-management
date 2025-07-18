@@ -236,6 +236,45 @@
     overflow: visible;
 }
 
+.team-member .team-member-image.admin-image-editable {
+    position: relative;
+    cursor: pointer;
+}
+
+.team-member .team-member-image.admin-image-editable::after {
+    content: '📷';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 4;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.team-member .team-member-image.admin-image-editable .image-overlay {
+    transition: background-color 0.3s ease;
+}
+
+.team-member .team-member-image.admin-image-editable:hover::after {
+    opacity: 1;
+}
+
+.team-member .team-member-image.admin-image-editable:hover .image-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.team-member .team-member-image.admin-image-editable img {
+    transition: transform 0.3s ease;
+}
+
+.team-member .team-member-image.admin-image-editable:hover img {
+    transform: scale(1.05);
+}
+
 /* Ensure team member image container has proper spacing for delete button */
 .team-member .team-member-image img {
     position: relative;

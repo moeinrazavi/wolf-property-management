@@ -536,7 +536,7 @@ class AdminImageManager {
     /**
      * Show image browser for the main bucket
      */
-    async showImageBrowser() {
+    async showImageBrowser(onImageSelect) {
         console.log('🚀 Showing image browser for wolf-property-images bucket');
         
         const modal = document.createElement('div');
@@ -594,18 +594,18 @@ class AdminImageManager {
         // Refresh button
         modal.querySelector('#refresh-images').addEventListener('click', () => {
             console.log('🔄 Refresh button clicked');
-            this.loadBucketImages(modal);
+            this.loadBucketImages(modal, onImageSelect);
         });
 
         // Load images from the main bucket
         console.log('📂 Starting to load bucket images...');
-        this.loadBucketImages(modal);
+        this.loadBucketImages(modal, onImageSelect);
     }
 
     /**
      * Load images from a specific bucket
      */
-    async loadBucketImages(modal) {
+    async loadBucketImages(modal, onImageSelect) {
         const container = modal.querySelector('#images-container');
         container.innerHTML = '<div style="text-align: center; padding: 20px;"><p>Loading images...</p></div>';
 
@@ -706,24 +706,28 @@ class AdminImageManager {
                         
                         console.log(`🖼️ Processing image: ${filePath}, Display name: ${displayName}, Signed URL: ${imageUrl}`);
                         
+                        // Check if we are in "selection mode"
+                        const itemClass = onImageSelect ? 'selectable-image' : '';
+                        
                         return `
-                            <div class="image-item" data-url="${publicUrl}" data-filename="${displayName}">
+                            <div class="image-item ${itemClass}" data-public-url="${publicUrl}" data-signed-url="${imageUrl}" data-filename="${displayName}">
                                 <div class="image-thumbnail-container" style="position: relative; overflow: hidden; border-radius: 8px 8px 0 0;">
                                     <img src="${imageUrl}" alt="${displayName}" loading="lazy" 
-                                         style="cursor: pointer;" 
-                                         onclick="this.closest('.image-item').querySelector('.view-full-btn').click()"
                                          onerror="console.error('❌ Failed to load image: ${filePath}', this.src)">
                                     <div class="image-overlay" style="position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 5px; border-radius: 0 8px 0 8px; font-size: 12px;">
                                         ${fileSize}MB
                                     </div>
                                 </div>
                                 <div class="image-info">
-                                    <p class="image-name" title="${filePath}">${displayName.length > 20 ? displayName.substring(0, 20) + '...' : displayName}</p>
+                                    <p class="image-name" title="${filePath}">${displayName}</p>
                                     <p class="image-path" style="margin: 3px 0; font-size: 10px; color: #666;">${filePath}</p>
                                     <p class="image-date" style="margin: 5px 0; font-size: 11px; color: #888;">Uploaded: ${uploadDate}</p>
                                     <div class="image-actions" style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                        <button class="copy-url-btn" data-url="${publicUrl}" style="flex: 1; min-width: 70px;">📋 Copy URL</button>
-                                        <button class="view-full-btn" data-url="${imageUrl}" data-filename="${displayName}" style="flex: 1; min-width: 70px; background: #27ae60;">👁️ View</button>
+                                        ${onImageSelect ? 
+                                            `<button class="select-image-btn" style="flex: 1; background: #27ae60;">✅ Select</button>` :
+                                            `<button class="copy-url-btn" data-url="${publicUrl}" style="flex: 1; min-width: 70px;">📋 Copy URL</button>
+                                             <button class="view-full-btn" data-url="${imageUrl}" data-filename="${displayName}" style="flex: 1; min-width: 70px;">👁️ View</button>`
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -734,60 +738,62 @@ class AdminImageManager {
 
             console.log('✅ Image grid created successfully');
 
-            // Add event listeners for copy URL
-            container.querySelectorAll('.copy-url-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const url = e.target.getAttribute('data-url');
-                    console.log('📋 Copying URL to clipboard:', url);
-                    navigator.clipboard.writeText(url).then(() => {
-                        const originalText = e.target.textContent;
-                        e.target.textContent = '✅ Copied!';
-                        e.target.style.background = '#27ae60';
-                        setTimeout(() => {
-                            e.target.textContent = originalText;
-                            e.target.style.background = '#3498db';
-                        }, 2000);
-                    }).catch(() => {
-                        // Fallback for older browsers
-                        const textArea = document.createElement('textarea');
-                        textArea.value = url;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        e.target.textContent = '✅ Copied!';
+            // Add event listeners based on whether we are in selection mode
+            if (onImageSelect) {
+                container.querySelectorAll('.selectable-image').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const publicUrl = item.dataset.publicUrl;
+                        const signedUrl = item.dataset.signedUrl;
+                        const filename = item.dataset.filename;
+                        
+                        console.log('✅ Image selected:', { publicUrl, signedUrl, filename });
+                        onImageSelect({ publicUrl, signedUrl, filename });
+                        modal.remove();
                     });
                 });
-            });
-
-            // Add event listeners for view full image
-            container.querySelectorAll('.view-full-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const url = e.target.getAttribute('data-url');
-                    const filename = e.target.getAttribute('data-filename');
-                    console.log('👁️ Opening full-size image:', filename);
-                    this.showFullSizeImage(url, filename);
+            } else {
+                // Add event listeners for copy URL
+                container.querySelectorAll('.copy-url-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const url = e.target.getAttribute('data-url');
+                        console.log('📋 Copying URL to clipboard:', url);
+                        navigator.clipboard.writeText(url).then(() => {
+                            const originalText = e.target.textContent;
+                            e.target.textContent = '✅ Copied!';
+                            e.target.style.background = '#27ae60';
+                            setTimeout(() => {
+                                e.target.textContent = originalText;
+                                e.target.style.background = '#3498db';
+                            }, 2000);
+                        }).catch(() => {
+                            // Fallback for older browsers
+                            const textArea = document.createElement('textarea');
+                            textArea.value = url;
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                            e.target.textContent = '✅ Copied!';
+                        });
+                    });
                 });
-            });
 
+                // Add event listeners for view full image
+                container.querySelectorAll('.view-full-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const url = e.target.getAttribute('data-url');
+                        const filename = e.target.getAttribute('data-filename');
+                        console.log('👁️ Opening full-size image:', filename);
+                        this.showFullSizeImage(url, filename);
+                    });
+                });
+            }
         } catch (error) {
-            console.error('💥 Failed to load bucket images:', error);
-            console.error('💥 Full error object:', error);
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #e74c3c;">
-                    <p style="font-size: 18px; margin-bottom: 10px;">❌ Failed to load images</p>
-                    <p style="margin-bottom: 20px;">${error.message}</p>
-                    <button class="btn btn-image-manager" onclick="location.reload()">
-                        🔄 Reload Page
-                    </button>
-                    <details style="margin-top: 15px; text-align: left;">
-                        <summary>Technical Details</summary>
-                        <pre style="background: #f8f8f8; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 12px; overflow: auto;">${JSON.stringify(error, null, 2)}</pre>
-                    </details>
-                </div>
-            `;
+            console.error('❌ Error loading bucket images:', error);
+            container.innerHTML = `<p style="color: red; padding: 20px;">Error loading images: ${error.message}</p>`;
         }
     }
 
@@ -828,6 +834,9 @@ class AdminImageManager {
 
 // Create global instance
 const adminImageManager = new AdminImageManager();
+
+// Make globally available for other scripts to use
+window.adminImageManager = adminImageManager;
 
 // Auto-initialize when admin logs in
 document.addEventListener('DOMContentLoaded', () => {

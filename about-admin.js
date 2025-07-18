@@ -152,22 +152,31 @@ class AboutAdminManager {
         memberDiv.setAttribute('data-aos', 'fade-up');
         memberDiv.setAttribute('data-aos-delay', `${member.sort_order * 100}`);
         
+        console.log(`CREATING ELEMENT for ${member.name}:`);
+        console.log(`  - DB image_url: ${member.image_url}`);
+        console.log(`  - DB image_filename: ${member.image_filename}`);
+
         // Check if member is marked for deletion
         const isMarkedForDeletion = this.pendingChanges.deleted.has(member.id);
         if (isMarkedForDeletion) {
             memberDiv.classList.add('pending-deletion');
         }
         
-        // Get proper image URL (signed URL for private bucket)
-        let imageUrl = member.image_url;
-        if (member.image_filename && member.image_url.includes('wolf-property-images')) {
+        // Get proper image URL. If it's from our private bucket, we need to generate a signed URL for it.
+        let imageUrl = member.image_url || 'https://via.placeholder.com/300x300/e0e0e0/999999?text=No+Image';
+        if (member.image_filename) {
+            console.log(`  - Attempting to get signed URL for bucket path: '${member.image_filename}'`);
             try {
-                const { signedUrl } = await this.dbService.getSignedUrl('wolf-property-images', `images/people/${member.image_filename}`);
+                // Always generate a fresh signed URL on page load for private images
+                const signedUrl = await this.dbService.getFileUrl('wolf-property-images', member.image_filename, true);
                 if (signedUrl) {
                     imageUrl = signedUrl;
+                    console.log(`  - SUCCESS: Generated signed URL:`, imageUrl);
+                } else {
+                    console.warn(`  - FAILED: getFileUrl returned null or undefined for '${member.image_filename}'`);
                 }
             } catch (error) {
-                console.warn('Could not get signed URL for image:', member.image_filename);
+                console.error(`  - ERROR: Could not get signed URL for image: ${member.image_filename}`, error);
             }
         }
         
@@ -202,19 +211,19 @@ class AboutAdminManager {
         memberDiv.innerHTML = `
             ${pendingBadge}
             <div class="team-member-image ${member.isNew ? 'pending-new-border' : ''}">
-                <img src="${imageUrl}" alt="${member.name}" data-member-id="${member.id}">
+                <img src="${imageUrl}" alt="${member.name}" data-member-id="${member.id}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x300/e0e0e0/999999?text=Load+Error';">
                 <div class="image-overlay"></div>
             </div>
             <div class="team-member-info">
                 <h3 data-member-id="${member.id}" data-field="name">${member.name}</h3>
                 <p class="position" data-member-id="${member.id}" data-field="position">${member.position}</p>
                 <div class="team-member-bio">
-                    <p data-member-id="${member.id}" data-field="bio">${member.bio}</p>
+                    <p data-member-id="${member.id}" data-field="bio">${member.bio || ''}</p>
                     ${member.bio_paragraph_2 ? `<p data-member-id="${member.id}" data-field="bio_paragraph_2">${member.bio_paragraph_2}</p>` : ''}
                 </div>
                 <div class="social-links">
-                    <a href="${member.linkedin_url}" class="social-link">LinkedIn</a>
-                    <a href="${member.email}" class="social-link">Email</a>
+                    <a href="${member.linkedin_url || '#'}" class="social-link">LinkedIn</a>
+                    <a href="${member.email ? `mailto:${member.email}` : '#'}" class="social-link">Email</a>
                 </div>
             </div>
         `;
@@ -235,27 +244,15 @@ class AboutAdminManager {
         const memberId = memberElement.dataset.memberId;
         
         // Make image clickable
-        const img = memberElement.querySelector('.team-member-image img');
-        if (img) {
-            img.style.cursor = 'pointer';
-            img.style.border = '3px dashed rgba(231, 76, 60, 0.5)';
-            img.style.transition = 'all 0.3s ease';
-            
-            img.addEventListener('click', (e) => {
+        const imageContainer = memberElement.querySelector('.team-member-image');
+        if (imageContainer) {
+            imageContainer.classList.add('admin-image-editable');
+            imageContainer.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('🖼️ Image clicked for member:', memberId);
+                const img = imageContainer.querySelector('img');
                 this.showImageSelector(img, memberId);
-            });
-
-            img.addEventListener('mouseenter', () => {
-                img.style.border = '3px dashed rgba(231, 76, 60, 0.8)';
-                img.style.transform = 'scale(1.05)';
-            });
-
-            img.addEventListener('mouseleave', () => {
-                img.style.border = '3px dashed rgba(231, 76, 60, 0.5)';
-                img.style.transform = 'scale(1)';
             });
         }
         
@@ -747,140 +744,22 @@ class AboutAdminManager {
      * Show image selector modal
      */
     async showImageSelector(targetImg, memberId) {
-        console.log('🖼️ Opening image selector for team member:', memberId);
+        console.log('Using global image browser for team member image selection...');
         
+        if (!window.adminImageManager) {
+            console.error('❌ Admin Image Manager is not available on the window object');
+            alert('Error: Image manager not found. Please refresh the page.');
+            return;
+        }
+
         this.currentImageSelector = targetImg;
         this.currentTeamMemberId = memberId;
         
-        const modal = document.createElement('div');
-        modal.className = 'image-selector-modal';
-        modal.innerHTML = `
-            <div class="image-selector-content">
-                <div class="image-selector-header">
-                    <h3>📷 Select Team Member Image</h3>
-                    <p style="color: #666; margin: 5px 0;">Choose an image from your bucket</p>
-                    <span class="image-selector-close">&times;</span>
-                </div>
-                <div class="image-selector-body">
-                    <div class="images-container" id="selector-images-container">
-                        <p>Loading images...</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        // Add event listeners
-        modal.querySelector('.image-selector-close').addEventListener('click', () => {
-            modal.remove();
-            this.currentImageSelector = null;
-            this.currentTeamMemberId = null;
+        // Use the global image browser with a callback
+        window.adminImageManager.showImageBrowser(({ publicUrl, signedUrl, filename }) => {
+            console.log('✅ Image selected from global browser:', { publicUrl, signedUrl, filename });
+            this.assignImageToTeamMember(publicUrl, signedUrl, filename);
         });
-        
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-                this.currentImageSelector = null;
-                this.currentTeamMemberId = null;
-            }
-        });
-
-        // Load images
-        await this.loadSelectableImages(modal);
-    }
-
-    /**
-     * Load images for selection
-     */
-    async loadSelectableImages(modal) {
-        const container = modal.querySelector('#selector-images-container');
-        
-        try {
-            console.log('📞 Loading images for selection...');
-            const { files, error } = await this.dbService.listBucketFiles('wolf-property-images');
-
-            if (error) {
-                throw new Error(error);
-            }
-
-            if (!files || files.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <p>No images found in bucket</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // Filter image files
-            const imageFiles = files.filter(file => {
-                const fileName = file.fullPath || file.name;
-                const ext = fileName.toLowerCase().split('.').pop();
-                return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
-            });
-
-            if (imageFiles.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <p>No image files found in bucket</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // Create image grid
-            container.innerHTML = `
-                <div class="selectable-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 20px;">
-                    ${imageFiles.map(file => {
-                        const filePath = file.fullPath || file.name;
-                        const displayName = file.name;
-                        const signedUrl = file.signedUrl;
-                        const publicUrl = this.dbService.getPublicUrl('wolf-property-images', filePath);
-                        
-                        return `
-                            <div class="selectable-image-item" data-public-url="${publicUrl}" data-signed-url="${signedUrl}" data-filename="${displayName}" style="cursor: pointer; border: 2px solid transparent; border-radius: 8px; overflow: hidden; transition: all 0.3s ease;">
-                                <img src="${signedUrl}" alt="${displayName}" style="width: 100%; height: 120px; object-fit: cover;" onerror="console.error('Failed to load:', this.src)">
-                                <div style="padding: 8px; background: #f8f9fa; text-align: center;">
-                                    <p style="margin: 0; font-size: 12px; font-weight: bold; color: #333;">${displayName.length > 15 ? displayName.substring(0, 15) + '...' : displayName}</p>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-
-            // Add click handlers for image selection
-            container.querySelectorAll('.selectable-image-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const publicUrl = item.dataset.publicUrl;
-                    const signedUrl = item.dataset.signedUrl;
-                    const filename = item.dataset.filename;
-                    
-                    this.assignImageToTeamMember(publicUrl, signedUrl, filename);
-                    modal.remove();
-                    this.currentImageSelector = null;
-                });
-
-                item.addEventListener('mouseenter', () => {
-                    item.style.border = '2px solid #3498db';
-                    item.style.transform = 'scale(1.05)';
-                });
-
-                item.addEventListener('mouseleave', () => {
-                    item.style.border = '2px solid transparent';
-                    item.style.transform = 'scale(1)';
-                });
-            });
-
-        } catch (error) {
-            console.error('❌ Failed to load images for selection:', error);
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #e74c3c;">
-                    <p>Failed to load images: ${error.message}</p>
-                </div>
-            `;
-        }
     }
 
     /**
@@ -889,40 +768,57 @@ class AboutAdminManager {
     async assignImageToTeamMember(publicUrl, signedUrl, filename) {
         if (!this.currentImageSelector || !this.currentTeamMemberId) return;
 
-        console.log(`🖼️ Assigning image ${filename} to team member ${this.currentTeamMemberId}`);
+        console.log('🖼️ ASSIGNING IMAGE...');
+        console.log(`  - Member ID: ${this.currentTeamMemberId}`);
+        console.log(`  - Filename: ${filename}`);
+        console.log(`  - Permanent URL (to save): ${publicUrl}`);
+        console.log(`  - Temporary URL (for display): ${signedUrl}`);
         
         try {
             // Find the team member in our data
             const member = this.teamMembers.find(m => m.id === this.currentTeamMemberId);
             if (!member) {
-                console.error('❌ Team member not found');
+                console.error('❌ Team member not found for assignment.');
                 return;
             }
             
+            // The path within the bucket is what's important. Extract it.
+            // Example publicUrl: https://[project].supabase.co/storage/v1/object/public/wolf-property-images/people/new-image.png
+            // We need to save the path: "people/new-image.png"
+            const urlParts = new URL(publicUrl);
+            // The path after the bucket name is the part to save.
+            const bucketPath = urlParts.pathname.split('/wolf-property-images/')[1];
+
+            console.log(`  - Extracted Bucket Path (to save): ${bucketPath}`);
+
+            const changes = {
+                image_url: publicUrl, // Keep the full public URL for potential direct use
+                image_filename: bucketPath // **CRITICAL FIX**: Save the bucket path, not just the filename
+            };
+
             // Track the change as pending
-            this.trackMemberChange(this.currentTeamMemberId, {
-                image_url: publicUrl,
-                image_filename: filename
-            });
+            this.trackMemberChange(this.currentTeamMemberId, changes);
             
             // Update the member data locally
             member.image_url = publicUrl;
-            member.image_filename = filename;
+            member.image_filename = bucketPath;
             
-            // Update the UI
+            // Update the UI with the temporary signed URL for immediate display
             this.currentImageSelector.src = signedUrl;
             this.currentImageSelector.alt = member.name;
             
             // Visual feedback
-            this.currentImageSelector.style.border = '3px solid #f39c12'; // Orange for pending
+            this.currentImageSelector.style.border = '3px solid #f39c12';
             setTimeout(() => {
-                this.currentImageSelector.style.border = '3px dashed rgba(231, 76, 60, 0.5)';
+                if (this.currentImageSelector) {
+                    this.currentImageSelector.style.border = '';
+                }
             }, 2000);
             
-            console.log('✅ Team member image change tracked as pending');
+            console.log('✅ Image assignment tracked as pending.');
             
         } catch (error) {
-            console.error('❌ Error assigning image:', error);
+            console.error('❌ Error during image assignment:', error);
             alert(`Error assigning image: ${error.message}`);
         }
     }

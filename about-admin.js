@@ -9,6 +9,7 @@
  */
 
 import dbService from './supabase-client.js';
+import adminVersionControlUI from './admin-version-control-ui.js';
 
 class AboutAdminManager {
     constructor() {
@@ -273,9 +274,7 @@ class AboutAdminManager {
                     <button id="add-team-member-btn" class="btn btn-primary" style="background-color: #27ae60; margin-right: 10px;">
                         ➕ Add Team Member
                     </button>
-                    <button id="save-team-changes-btn" class="btn btn-primary" style="background-color: #e74c3c;" disabled>
-                        💾 Save Changes
-                    </button>
+                    <!-- Save button removed - using universal version control save button -->
                 </div>
                 <div id="changes-status" style="margin-top: 10px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
                     Changes are saved with version history for easy reverting
@@ -454,6 +453,22 @@ class AboutAdminManager {
         // Store the changes
         this.pendingChanges.modified.set(memberId, updatedChanges);
         
+        // Track in version control system
+        if (adminVersionControlUI.isReady()) {
+            const member = this.teamMembers.find(m => m.id === memberId);
+            adminVersionControlUI.trackModification(
+                'teamMember',
+                memberId,
+                existingChanges,
+                updatedChanges,
+                {
+                    memberName: member ? member.name : 'Unknown',
+                    page: 'about.html',
+                    timestamp: new Date().toISOString()
+                }
+            );
+        }
+        
         // Mark as having unsaved changes
         this.hasUnsavedChanges = true;
         this.updateSaveButton();
@@ -507,46 +522,35 @@ class AboutAdminManager {
     }
 
     /**
-     * Update the save button state
+     * Update the team status display (save button now handled by version control UI)
      */
     updateSaveButton() {
-        const saveBtn = document.getElementById('save-team-changes-btn');
         const statusDiv = document.getElementById('changes-status');
         
-        if (!saveBtn || !statusDiv) return;
+        if (!statusDiv) return;
         
         if (this.hasUnsavedChanges) {
-            saveBtn.disabled = false;
-            saveBtn.style.background = '#e74c3c';
-            saveBtn.style.animation = 'pulse 2s infinite';
-            saveBtn.textContent = '💾 Save Changes (*)';
-            
             const changeCount = this.pendingChanges.modified.size + 
                                this.pendingChanges.added.length + 
                                this.pendingChanges.deleted.size;
             
             const newMemberCount = this.pendingChanges.added.length;
             const warningText = newMemberCount > 0 
-                ? `⚠️ ${changeCount} unsaved change(s) including ${newMemberCount} new member(s) - Will be lost if you refresh!`
-                : `⚠️ ${changeCount} unsaved change(s) - Click save to create new version`;
+                ? `⚠️ ${changeCount} team change(s) including ${newMemberCount} new member(s) - Use main Save Changes button`
+                : `⚠️ ${changeCount} team change(s) - Use main Save Changes button`;
                 
             statusDiv.innerHTML = `
                 <div style="color: rgba(255, 193, 7, 0.9); font-weight: bold; margin-bottom: 5px;">
                     ${warningText}
                 </div>
                 <div style="color: rgba(255, 255, 255, 0.8); font-size: 11px;">
-                    New members and edits are temporary until saved
+                    Team changes tracked in main version control system
                 </div>
             `;
         } else {
-            saveBtn.disabled = true;
-            saveBtn.style.background = '#6c757d';
-            saveBtn.style.animation = 'none';
-            saveBtn.textContent = '💾 Save Changes';
-            
             statusDiv.innerHTML = `
                 <div style="color: rgba(255, 255, 255, 0.6);">
-                    Changes are saved with version history for easy reverting
+                    Team changes are tracked in the main version control system
                 </div>
             `;
         }
@@ -821,6 +825,23 @@ class AboutAdminManager {
             
             // Add to pending changes
             this.pendingChanges.added.push(newMemberData);
+            
+            // Track in version control system
+            if (adminVersionControlUI.isReady()) {
+                adminVersionControlUI.trackModification(
+                    'teamMember',
+                    tempId,
+                    null, // no previous value
+                    newMemberData,
+                    {
+                        action: 'add',
+                        memberName: newMemberData.name,
+                        page: 'about.html',
+                        timestamp: new Date().toISOString()
+                    }
+                );
+            }
+            
             this.hasUnsavedChanges = true;
             this.updateSaveButton();
             
@@ -859,13 +880,7 @@ class AboutAdminManager {
             }
         });
 
-        // Save changes button
-        document.addEventListener('click', (e) => {
-            if (e.target && e.target.id === 'save-team-changes-btn') {
-                e.preventDefault();
-                this.saveAllChanges();
-            }
-        });
+        // Save functionality now handled by universal version control save button
 
         // Remove pending member button
         document.addEventListener('click', (e) => {
@@ -878,18 +893,15 @@ class AboutAdminManager {
     }
 
     /**
-     * Save all pending changes to database with version history
+     * Save all pending changes to database (called by universal save button)
      */
     async saveAllChanges() {
         if (!this.hasUnsavedChanges) {
-            console.log('No changes to save');
+            console.log('No team changes to save');
             return;
         }
 
-        console.log('💾 Saving all pending changes...');
-        
-        const saveBtn = document.getElementById('save-team-changes-btn');
-        const originalText = saveBtn.textContent;
+        console.log('💾 Saving all pending team changes...');
         
         try {
             // Defensive check: Ensure new members are not in the 'modified' list to prevent double-saving.
@@ -899,14 +911,6 @@ class AboutAdminManager {
                     this.pendingChanges.modified.delete(newMember.id);
                 }
             }
-
-            // Update button to show saving state
-            saveBtn.textContent = '⏳ Saving...';
-            saveBtn.disabled = true;
-
-            // Create version history entry
-            const versionDescription = this.generateVersionDescription();
-            const changes = this.generateChangesSnapshot();
 
             // Save modified members
             for (const [memberId, memberChanges] of this.pendingChanges.modified) {
@@ -953,127 +957,19 @@ class AboutAdminManager {
                 }
             }
 
-            // Save version history
-            await this.saveVersionHistory(versionDescription, changes);
-
             // Clear pending changes and re-render UI
             this.clearPendingChanges();
             await this.renderTeamMembers();
 
-            // Success feedback
-            saveBtn.style.background = '#27ae60';
-            saveBtn.textContent = '✅ Saved!';
-            
-            setTimeout(() => {
-                saveBtn.textContent = originalText;
-                this.updateSaveButton();
-            }, 3000);
-
-            console.log('✅ All changes saved successfully');
+            console.log('✅ All team changes saved successfully');
 
         } catch (error) {
-            console.error('❌ Failed to save changes:', error);
-            alert(`Failed to save changes: ${error.message}`);
-            
-            // Reset button
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
+            console.error('❌ Failed to save team changes:', error);
+            throw error; // Re-throw so universal save button can handle the error
         }
     }
 
-    /**
-     * Generate version description based on changes
-     */
-    generateVersionDescription() {
-        const parts = [];
-        
-        if (this.pendingChanges.modified.size > 0) {
-            parts.push(`Modified ${this.pendingChanges.modified.size} team member(s)`);
-        }
-        
-        if (this.pendingChanges.added.length > 0) {
-            parts.push(`Added ${this.pendingChanges.added.length} team member(s)`);
-        }
-        
-        if (this.pendingChanges.deleted.size > 0) {
-            parts.push(`Deleted ${this.pendingChanges.deleted.size} team member(s)`);
-        }
-        
-        return parts.join(', ') || 'Updated team members';
-    }
-
-    /**
-     * Generate changes snapshot for version history
-     */
-    generateChangesSnapshot() {
-        return {
-            modified: Object.fromEntries(this.pendingChanges.modified),
-            added: this.pendingChanges.added.map(member => ({
-                name: member.name,
-                position: member.position
-            })),
-            deleted: Array.from(this.pendingChanges.deleted),
-            timestamp: new Date().toISOString(),
-            page: 'about.html'
-        };
-    }
-
-    /**
-     * Save version history entry
-     */
-    async saveVersionHistory(description, changes) {
-        try {
-            // Get current version number
-            const currentVersion = await this.getCurrentVersionNumber();
-            const newVersion = currentVersion + 1;
-
-            // Create version history entry
-            const versionData = {
-                version_number: newVersion,
-                description: description,
-                changes: changes,
-                page_name: 'about.html',
-                created_at: new Date().toISOString()
-            };
-
-            // Save to version_history table
-            const { error } = await this.dbService.supabase
-                .from('version_history')
-                .insert(versionData);
-
-            if (error) {
-                console.warn('Failed to save version history:', error);
-            } else {
-                console.log(`✅ Version ${newVersion} saved to history`);
-            }
-
-        } catch (error) {
-            console.warn('Failed to save version history:', error);
-        }
-    }
-
-    /**
-     * Get current version number for about page
-     */
-    async getCurrentVersionNumber() {
-        try {
-            const { data, error } = await this.dbService.supabase
-                .from('version_history')
-                .select('version_number')
-                .eq('page_name', 'about.html')
-                .order('version_number', { ascending: false })
-                .limit(1);
-
-            if (error || !data || data.length === 0) {
-                return 0; // Start with version 1
-            }
-
-            return data[0].version_number;
-        } catch (error) {
-            console.warn('Failed to get current version:', error);
-            return 0;
-        }
-    }
+    // Version control functions removed - replaced by new VersionControlManager
 
     /**
      * Check if user is authenticated
@@ -1112,6 +1008,9 @@ class AboutAdminManager {
 
 // Create global instance
 const aboutAdminManager = new AboutAdminManager();
+
+// Make globally available for debugging and integration
+window.aboutAdminManager = aboutAdminManager;
 
 // Auto-initialize when admin logs in
 document.addEventListener('DOMContentLoaded', () => {

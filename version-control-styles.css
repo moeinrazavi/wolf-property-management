@@ -168,72 +168,131 @@
 .delete-member-btn {
     position: absolute;
     top: 10px;
-    right: 10px;
+    left: 10px;
     background: rgba(231, 76, 60, 0.9);
     border: none;
     border-radius: 50%;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 18px;
     z-index: 5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .delete-member-btn:before {
     content: '🗑️';
-    font-size: 16px;
+    font-size: 18px;
 }
 
 .delete-member-btn:hover {
     background: rgba(231, 76, 60, 1);
     transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+}
+
+/* Mobile responsiveness for delete button */
+@media (max-width: 768px) {
+    .delete-member-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 16px;
+        top: 8px;
+        left: 8px;
+    }
+    
+    .delete-member-btn:before {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .delete-member-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        top: 6px;
+        left: 6px;
+    }
+    
+    .delete-member-btn:before {
+        font-size: 14px;
+    }
 }
 
 .team-member {
     position: relative;
+    overflow: visible;
+    margin: 20px 0;
+}
+
+.team-member .team-member-image {
+    position: relative;
+    overflow: visible;
+}
+
+/* Ensure team member image container has proper spacing for delete button */
+.team-member .team-member-image img {
+    position: relative;
+    z-index: 1;
 }
 
 /* Pending Deletion State */
 .team-member.pending-deletion {
-    opacity: 0.6;
+    opacity: 0.7;
     position: relative;
+    transform: scale(0.98);
+    transition: all 0.3s ease;
 }
 
 .team-member.pending-deletion::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
     background: rgba(231, 76, 60, 0.1);
-    border: 2px dashed rgba(231, 76, 60, 0.5);
-    border-radius: 8px;
-    z-index: 1;
+    border: 2px dashed rgba(231, 76, 60, 0.6);
+    border-radius: 12px;
+    z-index: 0;
     pointer-events: none;
+    animation: deletion-pulse 2s infinite;
+}
+
+@keyframes deletion-pulse {
+    0%, 100% {
+        border-color: rgba(231, 76, 60, 0.6);
+        background: rgba(231, 76, 60, 0.1);
+    }
+    50% {
+        border-color: rgba(231, 76, 60, 0.8);
+        background: rgba(231, 76, 60, 0.15);
+    }
 }
 
 .team-member.pending-deletion .team-member-image img {
-    filter: grayscale(100%);
+    filter: grayscale(80%) contrast(0.8);
+    transition: filter 0.3s ease;
 }
 
 .team-member.pending-deletion .team-member-info {
     position: relative;
     z-index: 2;
+    opacity: 0.8;
 }
 
 /* Pending Badge Styles */
 .pending-badge {
     position: absolute;
     top: -10px;
-    left: 15px;
-    right: 15px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
     padding: 8px 12px;
     border-radius: 6px;
@@ -242,6 +301,42 @@
     color: white;
     text-align: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    width: max-content;
+    min-width: 200px;
+    max-width: min(350px, calc(100vw - 40px));
+}
+
+/* Mobile responsiveness for pending badges */
+@media (max-width: 768px) {
+    .pending-badge {
+        font-size: 11px;
+        padding: 6px 10px;
+        min-width: 180px;
+        max-width: calc(100vw - 30px);
+    }
+    
+    .pending-badge small {
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 480px) {
+    .pending-badge {
+        font-size: 10px;
+        padding: 5px 8px;
+        min-width: 160px;
+        max-width: calc(100vw - 20px);
+        top: -8px;
+    }
+    
+    .pending-badge small {
+        font-size: 8px;
+    }
+    
+    .pending-badge button {
+        font-size: 9px;
+        padding: 3px 6px;
+    }
 }
 
 .pending-badge.pending-new {
@@ -289,12 +384,26 @@
 }
 
 .restore-member-btn {
-    background: rgba(46, 204, 113, 0.8) !important;
-    border-color: rgba(46, 204, 113, 0.9) !important;
+    background: rgba(46, 204, 113, 0.9) !important;
+    border-color: rgba(46, 204, 113, 1) !important;
+    font-weight: 600 !important;
+    padding: 5px 10px !important;
+    border-radius: 5px !important;
 }
 
 .restore-member-btn:hover {
     background: rgba(46, 204, 113, 1) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4) !important;
+}
+
+/* Mobile restore button improvements */
+@media (max-width: 480px) {
+    .restore-member-btn {
+        padding: 4px 8px !important;
+        font-size: 9px !important;
+        margin-top: 4px !important;
+    }
 }
 
 /* Version History Modal */

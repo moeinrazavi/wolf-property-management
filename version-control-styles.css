@@ -164,6 +164,139 @@
     }
 }
 
+/* Team Member Delete Functionality */
+.delete-member-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(231, 76, 60, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    z-index: 5;
+}
+
+.delete-member-btn:before {
+    content: '🗑️';
+    font-size: 16px;
+}
+
+.delete-member-btn:hover {
+    background: rgba(231, 76, 60, 1);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+.team-member {
+    position: relative;
+}
+
+/* Pending Deletion State */
+.team-member.pending-deletion {
+    opacity: 0.6;
+    position: relative;
+}
+
+.team-member.pending-deletion::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(231, 76, 60, 0.1);
+    border: 2px dashed rgba(231, 76, 60, 0.5);
+    border-radius: 8px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.team-member.pending-deletion .team-member-image img {
+    filter: grayscale(100%);
+}
+
+.team-member.pending-deletion .team-member-info {
+    position: relative;
+    z-index: 2;
+}
+
+/* Pending Badge Styles */
+.pending-badge {
+    position: absolute;
+    top: -10px;
+    left: 15px;
+    right: 15px;
+    z-index: 10;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pending-badge.pending-new {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.pending-badge.pending-modified {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.pending-badge.pending-deleted {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.pending-badge small {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    opacity: 0.9;
+    font-weight: 400;
+}
+
+.pending-badge button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all 0.2s ease;
+}
+
+.pending-badge button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.remove-pending-btn {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.restore-member-btn {
+    background: rgba(46, 204, 113, 0.8) !important;
+    border-color: rgba(46, 204, 113, 0.9) !important;
+}
+
+.restore-member-btn:hover {
+    background: rgba(46, 204, 113, 1) !important;
+}
+
 /* Version History Modal */
 .version-history-modal {
     position: fixed;

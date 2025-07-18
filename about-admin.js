@@ -152,6 +152,12 @@ class AboutAdminManager {
         memberDiv.setAttribute('data-aos', 'fade-up');
         memberDiv.setAttribute('data-aos-delay', `${member.sort_order * 100}`);
         
+        // Check if member is marked for deletion
+        const isMarkedForDeletion = this.pendingChanges.deleted.has(member.id);
+        if (isMarkedForDeletion) {
+            memberDiv.classList.add('pending-deletion');
+        }
+        
         // Get proper image URL (signed URL for private bucket)
         let imageUrl = member.image_url;
         if (member.image_filename && member.image_url.includes('wolf-property-images')) {
@@ -165,19 +171,33 @@ class AboutAdminManager {
             }
         }
         
-        // Add pending indicator for new/unsaved members
+        // Add pending indicator for new/unsaved/deleted members
         const isPending = member.isNew || this.pendingChanges.modified.has(member.id);
-        const pendingBadge = member.isNew ? `
-            <div class="pending-badge pending-new">
-                <span>📝 NEW - Not Saved</span>
-                <small>This member will disappear if you refresh without saving</small>
-                <button class="remove-pending-btn" data-member-id="${member.id}" title="Remove this unsaved member">✕</button>
-            </div>
-        ` : (isPending ? `
-            <div class="pending-badge pending-modified">
-                <span>✏️ Modified - Not Saved</span>
-            </div>
-        ` : '');
+        let pendingBadge = '';
+        
+        if (isMarkedForDeletion) {
+            pendingBadge = `
+                <div class="pending-badge pending-deleted">
+                    <span>🗑️ MARKED FOR DELETION</span>
+                    <small>This member will be permanently deleted when you save changes</small>
+                    <button class="restore-member-btn" data-member-id="${member.id}" title="Cancel deletion">↶ Restore</button>
+                </div>
+            `;
+        } else if (member.isNew) {
+            pendingBadge = `
+                <div class="pending-badge pending-new">
+                    <span>📝 NEW - Not Saved</span>
+                    <small>This member will disappear if you refresh without saving</small>
+                    <button class="remove-pending-btn" data-member-id="${member.id}" title="Remove this unsaved member">✕</button>
+                </div>
+            `;
+        } else if (isPending) {
+            pendingBadge = `
+                <div class="pending-badge pending-modified">
+                    <span>✏️ Modified - Not Saved</span>
+                </div>
+            `;
+        }
 
         memberDiv.innerHTML = `
             ${pendingBadge}
@@ -202,6 +222,7 @@ class AboutAdminManager {
         // Add admin functionality if in admin mode
         if (document.body.classList.contains('admin-mode')) {
             this.makeTeamMemberEditable(memberDiv);
+            this.addDeleteButton(memberDiv, member);
         }
         
         return memberDiv;
@@ -491,8 +512,15 @@ class AboutAdminManager {
 
         // Check if this member has pending changes
         const hasChanges = this.pendingChanges.modified.has(memberId);
-        const member = this.teamMembers.find(m => m.id === memberId);
-        const isNew = member && member.isNew;
+        const isNew = this.teamMembers.find(m => m.id === memberId)?.isNew;
+        const isMarkedForDeletion = this.pendingChanges.deleted.has(memberId);
+
+        // Update deletion state class
+        if (isMarkedForDeletion) {
+            teamMemberDiv.classList.add('pending-deletion');
+        } else {
+            teamMemberDiv.classList.remove('pending-deletion');
+        }
 
         // Remove existing badge
         const existingBadge = teamMemberDiv.querySelector('.pending-badge');
@@ -500,12 +528,33 @@ class AboutAdminManager {
             existingBadge.remove();
         }
 
+        // Manage delete button visibility
+        const existingDeleteBtn = teamMemberDiv.querySelector('.delete-member-btn');
+        if (isMarkedForDeletion && existingDeleteBtn) {
+            existingDeleteBtn.remove();
+        } else if (!isMarkedForDeletion && !existingDeleteBtn && document.body.classList.contains('admin-mode')) {
+            const member = this.teamMembers.find(m => m.id === memberId);
+            if (member) {
+                this.addDeleteButton(teamMemberDiv, member);
+            }
+        }
+
         // Add appropriate badge if needed
-        if (isNew || hasChanges) {
+        if (isNew || hasChanges || isMarkedForDeletion) {
             const badge = document.createElement('div');
-            badge.className = `pending-badge ${isNew ? 'pending-new' : 'pending-modified'}`;
+            let badgeClass = 'pending-badge';
+            if (isMarkedForDeletion) badgeClass += ' pending-deleted';
+            else if (isNew) badgeClass += ' pending-new';
+            else if (hasChanges) badgeClass += ' pending-modified';
+            badge.className = badgeClass;
             
-            if (isNew) {
+            if (isMarkedForDeletion) {
+                badge.innerHTML = `
+                    <span>🗑️ MARKED FOR DELETION</span>
+                    <small>This member will be permanently deleted when you save changes</small>
+                    <button class="restore-member-btn" data-member-id="${memberId}" title="Cancel deletion">↶ Restore</button>
+                `;
+            } else if (isNew) {
                 badge.innerHTML = `
                     <span>📝 NEW - Not Saved</span>
                     <small>This member will disappear if you refresh without saving</small>
@@ -866,6 +915,149 @@ class AboutAdminManager {
         }
     }
 
+    /**
+     * Add delete button to a team member element
+     */
+    addDeleteButton(memberElement, member) {
+        // Don't add delete button if member is already marked for deletion
+        if (this.pendingChanges.deleted.has(member.id)) {
+            return;
+        }
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete-member-btn';
+        deleteButton.setAttribute('title', 'Mark for deletion');
+        deleteButton.setAttribute('data-member-id', member.id);
+
+        memberElement.appendChild(deleteButton);
+
+        deleteButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.markMemberForDeletion(member.id);
+        });
+    }
+
+    /**
+     * Mark a team member for deletion
+     */
+    markMemberForDeletion(memberId) {
+        console.log('🗑️ Marking member for deletion:', memberId);
+        
+        const member = this.teamMembers.find(m => m.id === memberId);
+        if (!member) {
+            console.error('❌ Member not found');
+            return;
+        }
+
+        // Confirm deletion
+        if (!confirm(`Mark "${member.name}" for deletion?\n\nThis member will be permanently deleted when you save changes.`)) {
+            return;
+        }
+        
+        // If this is a new (unsaved) member, just remove it completely
+        if (member.isNew) {
+            this.removePendingMember(memberId);
+            return;
+        }
+        
+        // Add to pending deleted list
+        this.pendingChanges.deleted.add(memberId);
+        
+        // Remove from modified list if it exists there
+        this.pendingChanges.modified.delete(memberId);
+        
+        // Track in version control system
+        if (adminVersionControlUI.isReady()) {
+            adminVersionControlUI.trackModification(
+                'teamMember',
+                memberId,
+                member, // old value
+                null, // new value (deleted)
+                {
+                    action: 'delete',
+                    memberName: member.name,
+                    page: 'about.html',
+                    timestamp: new Date().toISOString()
+                }
+            );
+        }
+        
+        // Update UI - re-render the specific member
+        const memberElement = document.querySelector(`[data-member-id="${memberId}"]`);
+        if (memberElement) {
+            memberElement.classList.add('pending-deletion');
+            
+            // Remove delete button and add restore UI
+            const deleteBtn = memberElement.querySelector('.delete-member-btn');
+            if (deleteBtn) {
+                deleteBtn.remove();
+            }
+        }
+        
+        // Update pending indicator
+        this.updateMemberPendingIndicator(memberId);
+        
+        // Mark as having unsaved changes
+        this.hasUnsavedChanges = true;
+        this.updateSaveButton();
+        
+        console.log('✅ Member marked for deletion');
+    }
+
+    /**
+     * Restore a team member from deletion
+     */
+    async restoreMember(memberId) {
+        console.log('↶ Restoring member from deletion:', memberId);
+        
+        const member = this.teamMembers.find(m => m.id === memberId);
+        if (!member) {
+            console.error('❌ Member not found');
+            return;
+        }
+        
+        // Remove from pending deleted list
+        this.pendingChanges.deleted.delete(memberId);
+        
+        // Track in version control system
+        if (adminVersionControlUI.isReady()) {
+            adminVersionControlUI.trackModification(
+                'teamMember',
+                memberId,
+                null, // old value (was deleted)
+                member, // new value (restored)
+                {
+                    action: 'restore',
+                    memberName: member.name,
+                    page: 'about.html',
+                    timestamp: new Date().toISOString()
+                }
+            );
+        }
+        
+        // Update UI - remove pending deletion state
+        const memberElement = document.querySelector(`[data-member-id="${memberId}"]`);
+        if (memberElement) {
+            memberElement.classList.remove('pending-deletion');
+            
+            // Re-add delete button if in admin mode
+            if (document.body.classList.contains('admin-mode')) {
+                this.addDeleteButton(memberElement, member);
+            }
+        }
+        
+        // Update pending indicator
+        this.updateMemberPendingIndicator(memberId);
+        
+        // Mark as having unsaved changes
+        this.hasUnsavedChanges = this.pendingChanges.added.length > 0 || 
+                                 this.pendingChanges.modified.size > 0 || 
+                                 this.pendingChanges.deleted.size > 0;
+        this.updateSaveButton();
+        
+        console.log('✅ Member restored from deletion');
+    }
 
 
     /**
@@ -890,6 +1082,15 @@ class AboutAdminManager {
                 this.removePendingMember(memberId);
             }
         });
+
+        // Restore member from deletion button
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.classList.contains('restore-member-btn')) {
+                e.preventDefault();
+                const memberId = e.target.dataset.memberId;
+                this.restoreMember(memberId);
+            }
+        });
     }
 
     /**
@@ -901,7 +1102,7 @@ class AboutAdminManager {
             return;
         }
 
-        console.log('💾 Saving all pending team changes...');
+        console.log('�� Saving all pending team changes...');
         
         try {
             // Defensive check: Ensure new members are not in the 'modified' list to prevent double-saving.

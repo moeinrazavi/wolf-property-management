@@ -892,6 +892,14 @@ class AboutAdminManager {
         const originalText = saveBtn.textContent;
         
         try {
+            // Defensive check: Ensure new members are not in the 'modified' list to prevent double-saving.
+            for (const newMember of this.pendingChanges.added) {
+                if (this.pendingChanges.modified.has(newMember.id)) {
+                    console.warn(`New member ${newMember.name} was incorrectly in modified list. Removing to prevent duplication.`);
+                    this.pendingChanges.modified.delete(newMember.id);
+                }
+            }
+
             // Update button to show saving state
             saveBtn.textContent = '⏳ Saving...';
             saveBtn.disabled = true;

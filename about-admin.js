@@ -118,6 +118,28 @@ class AboutAdminManager {
     }
 
     /**
+     * Get pending changes in format expected by version control system
+     */
+    getPendingChangesForVersionControl() {
+        if (!this.hasUnsavedChanges) {
+            return null;
+        }
+        
+        console.log('📋 Providing pending team changes to version control:');
+        console.log(`   - Modified: ${this.pendingChanges.modified.size} members`);
+        console.log(`   - Added: ${this.pendingChanges.added.length} members`);
+        console.log(`   - Deleted: ${this.pendingChanges.deleted.size} members`);
+        
+        return {
+            added: [...this.pendingChanges.added],
+            modified: this.pendingChanges.modified instanceof Map ? 
+                Object.fromEntries(this.pendingChanges.modified) : 
+                this.pendingChanges.modified,
+            deleted: [...this.pendingChanges.deleted]
+        };
+    }
+
+    /**
      * Render team members in the about page
      */
     async renderTeamMembers() {
@@ -607,17 +629,18 @@ class AboutAdminManager {
         // Store the changes
         this.pendingChanges.modified.set(memberId, updatedChanges);
         
-        // Track in version control system
+        // Track in optimized version control system
         if (adminVersionControlUI.isReady()) {
             const member = this.teamMembers.find(m => m.id === memberId);
-            adminVersionControlUI.trackModification(
-                'teamMember',
-                memberId,
-                existingChanges,
-                updatedChanges,
+            adminVersionControlUI.getVersionManager().trackChange(
+                `team_member_${memberId}`,
+                JSON.stringify(existingChanges),
+                JSON.stringify(updatedChanges),
+                'update',
                 {
                     memberName: member ? member.name : 'Unknown',
                     page: 'about.html',
+                    contentType: 'team_member',
                     timestamp: new Date().toISOString()
                 }
             );
@@ -907,17 +930,18 @@ class AboutAdminManager {
             // Add to pending changes
             this.pendingChanges.added.push(newMemberData);
             
-            // Track in version control system
+            // Track in optimized version control system
             if (adminVersionControlUI.isReady()) {
-                adminVersionControlUI.trackModification(
-                    'teamMember',
-                    tempId,
+                adminVersionControlUI.getVersionManager().trackChange(
+                    `team_member_${tempId}`,
                     null, // no previous value
-                    newMemberData,
+                    JSON.stringify(newMemberData),
+                    'create',
                     {
                         action: 'add',
                         memberName: newMemberData.name,
                         page: 'about.html',
+                        contentType: 'team_member',
                         timestamp: new Date().toISOString()
                     }
                 );
@@ -999,17 +1023,18 @@ class AboutAdminManager {
         // Remove from modified list if it exists there
         this.pendingChanges.modified.delete(memberId);
         
-        // Track in version control system
+        // Track in optimized version control system
         if (adminVersionControlUI.isReady()) {
-            adminVersionControlUI.trackModification(
-                'teamMember',
-                memberId,
-                member, // old value
+            adminVersionControlUI.getVersionManager().trackChange(
+                `team_member_${memberId}`,
+                JSON.stringify(member), // old value
                 null, // new value (deleted)
+                'delete',
                 {
                     action: 'delete',
                     memberName: member.name,
                     page: 'about.html',
+                    contentType: 'team_member',
                     timestamp: new Date().toISOString()
                 }
             );
@@ -1052,17 +1077,18 @@ class AboutAdminManager {
         // Remove from pending deleted list
         this.pendingChanges.deleted.delete(memberId);
         
-        // Track in version control system
+        // Track in optimized version control system
         if (adminVersionControlUI.isReady()) {
-            adminVersionControlUI.trackModification(
-                'teamMember',
-                memberId,
+            adminVersionControlUI.getVersionManager().trackChange(
+                `team_member_${memberId}`,
                 null, // old value (was deleted)
-                member, // new value (restored)
+                JSON.stringify(member), // new value (restored)
+                'create',
                 {
                     action: 'restore',
                     memberName: member.name,
                     page: 'about.html',
+                    contentType: 'team_member',
                     timestamp: new Date().toISOString()
                 }
             );

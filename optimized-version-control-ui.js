@@ -9,7 +9,7 @@
  * - Cache status display
  */
 
-import optimizedVersionControlManager from './version-control-manager.js';
+import optimizedVersionControlManager from './optimized-version-control-manager.js';
 
 class OptimizedVersionControlUI {
     constructor() {
@@ -265,7 +265,7 @@ class OptimizedVersionControlUI {
     }
 
     /**
-     * Handle save changes with GitHub-style version control
+     * Handle save changes with performance tracking
      */
     async handleSaveChanges() {
         const saveButton = document.getElementById('optimized-save-btn');
@@ -282,16 +282,14 @@ class OptimizedVersionControlUI {
             // Get description from user
             const description = this.promptForDescription();
             
-            // **GITHUB-STYLE FIX**: Pass pending team member changes to version control
-            // Instead of saving them first, we let version control handle the entire flow
-            let pendingTeamChanges = null;
+            // **CRITICAL FIX**: Save team member changes via about admin manager first
             if (window.aboutAdminManager && window.aboutAdminManager.hasUnsavedChanges) {
-                console.log('📋 Getting pending team member changes for version control...');
-                pendingTeamChanges = window.aboutAdminManager.getPendingChangesForVersionControl();
+                console.log('🔄 Saving team member changes via about admin manager...');
+                await window.aboutAdminManager.saveAllChanges();
             }
             
-            // Save changes with GitHub-style logic (version control will handle everything)
-            const result = await this.versionManager.saveChangesGitHubStyle(description, pendingTeamChanges);
+            // Save changes
+            const result = await this.versionManager.saveChanges(description);
             
             if (result.success) {
                 const saveTime = Date.now() - startTime;
@@ -299,11 +297,9 @@ class OptimizedVersionControlUI {
                     `✅ Version ${result.version} saved in ${saveTime}ms! (${result.changeCount} changes)`
                 );
                 
-                // Clear team manager pending changes since version control handled them
-                if (window.aboutAdminManager && pendingTeamChanges) {
-                    console.log('🔄 Clearing team manager pending changes...');
-                    window.aboutAdminManager.clearPendingChanges();
-                    // Refresh to show the applied changes
+                // **CRITICAL FIX**: Refresh team members from database to show saved changes
+                if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+                    console.log('🔄 Refreshing team members from database...');
                     await window.aboutAdminManager.loadTeamMembersFromDatabase();
                 }
                 
@@ -402,6 +398,8 @@ class OptimizedVersionControlUI {
             `${version.version_number}_${this.versionManager.currentPage}`
         );
         
+        const changeCount = (version.content_changes_count || 0) + (version.team_changes_count || 0);
+        
         return `
             <div class="optimized-version-item">
                 <div class="version-info">
@@ -409,6 +407,7 @@ class OptimizedVersionControlUI {
                         <span class="version-number">v${version.version_number}</span>
                         <div class="version-indicators">
                             ${isCached ? '<span class="cache-indicator" title="Cached - Instant Restore">📋</span>' : '<span class="build-indicator" title="Will build from changes">🔧</span>'}
+                            ${changeCount > 0 ? `<span class="change-count">${changeCount}</span>` : ''}
                         </div>
                     </div>
                     <div class="version-description">${version.description || 'No description'}</div>
@@ -783,7 +782,7 @@ class OptimizedVersionControlUI {
 }
 
 // Create global instance
-const adminVersionControlUI = new OptimizedVersionControlUI();
+const optimizedVersionControlUI = new OptimizedVersionControlUI();
 
 // Export for use in other modules
-export default adminVersionControlUI; 
+export default optimizedVersionControlUI; 

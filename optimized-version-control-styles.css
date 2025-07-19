@@ -487,6 +487,22 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.performance-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.performance-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
 .performance-body {
     padding: 20px;
     max-height: 60vh;

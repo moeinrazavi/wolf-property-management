@@ -406,16 +406,13 @@ async function loginAdmin() {
     document.getElementById('admin-controls').style.display = 'block';
     document.body.classList.add('admin-mode');
     
-    // Initialize new version control system
+    // Initialize optimized version control system
     try {
         await adminVersionControlUI.initialize();
-        console.log('✅ Version control system initialized');
-        
-        // Start modification session
-        await adminVersionControlUI.startModificationSession('Admin login - content editing session');
+        console.log('✅ Optimized version control system initialized');
         
     } catch (error) {
-        console.error('❌ Failed to initialize version control:', error);
+        console.error('❌ Failed to initialize optimized version control:', error);
         alert('Warning: Version control system failed to initialize. Some features may not work properly.');
     }
     
@@ -427,7 +424,7 @@ async function loginAdmin() {
 
 async function logoutAdmin() {
     // Check for unsaved changes
-    if (adminVersionControlUI.isReady() && adminVersionControlUI.getVersionControlManager().hasChanges()) {
+    if (adminVersionControlUI.isReady() && adminVersionControlUI.getVersionManager().hasChanges()) {
         const hasChanges = window.confirm(
             'You have unsaved changes that will be lost if you logout.\n\n' +
             'Click "OK" to logout without saving, or "Cancel" to stay and save your changes.'
@@ -593,17 +590,16 @@ function saveEdit(element, newText, elementId) {
         // Update the element content
         element.textContent = trimmedNewText;
         
-        // Track modification in version control system
+        // Track modification in optimized version control system
         if (adminVersionControlUI.isReady()) {
-            adminVersionControlUI.trackModification(
-                'content', 
+            adminVersionControlUI.trackContentChange(
                 elementId, 
                 originalText, 
                 trimmedNewText,
                 {
                     page: currentPage,
                     elementType: element.tagName.toLowerCase(),
-                    timestamp: new Date().toISOString()
+                    contentType: 'text'
                 }
             );
         }

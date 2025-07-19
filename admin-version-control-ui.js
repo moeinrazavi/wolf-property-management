@@ -277,16 +277,25 @@ class AdminVersionControlUI {
         saveButton.disabled = true;
 
         try {
-            // 1. Save team member changes first (if on about page)
+            // 1. Save logo changes first (if any pending)
+            if (window.saveLogoChanges) {
+                console.log('💾 Saving logo changes...');
+                const logoSaveResult = await window.saveLogoChanges();
+                if (!logoSaveResult) {
+                    throw new Error('Failed to save logo changes');
+                }
+            }
+
+            // 2. Save team member changes (if on about page)
             if (window.aboutAdminManager && window.aboutAdminManager.hasUnsavedChanges) {
                 console.log('💾 Saving team member changes...');
                 await window.aboutAdminManager.saveAllChanges();
             }
 
-            // 2. Request custom description from user
+            // 3. Request custom description from user
             const description = this.promptForDescription();
             
-            // 3. Save all changes through version control manager
+            // 4. Save all other changes through version control manager
             const result = await this.versionControlManager.saveChanges(description);
             
             if (result.success) {

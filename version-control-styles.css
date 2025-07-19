@@ -770,3 +770,65 @@
         transform: scale(1);
     }
 } 
+
+/* Logo editing in admin mode */
+.admin-mode .logo {
+    position: relative;
+    cursor: pointer;
+}
+
+.admin-mode .logo-img {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.admin-mode .logo:hover .logo-img {
+    opacity: 0.8;
+    transform: scale(1.02);
+}
+
+.admin-mode .logo::after {
+    content: '📷';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 50px;
+    font-size: 16px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.admin-mode .logo:hover::after {
+    opacity: 1;
+}
+
+/* Pending logo change indicator */
+.logo.pending-change {
+    position: relative;
+}
+
+.logo.pending-change::before {
+    content: '✏️ PENDING';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #f39c12;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 10;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+} 

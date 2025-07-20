@@ -1569,6 +1569,44 @@ class OptimizedVersionControlManager {
     }
 
     /**
+     * Create baseline version (Version 0) - represents initial state before any changes
+     */
+    async createBaselineVersion() {
+        console.log('📸 Creating baseline version - capturing initial state...');
+        
+        try {
+            // Capture the current state as it exists right now
+            const initialState = await this.captureCurrentContentState();
+            
+            // Save this as Version 1 (the baseline)
+            const baselineVersion = 1;
+            await this.saveContentStateAsVersion(
+                initialState, 
+                baselineVersion, 
+                'Initial State - Baseline before any changes'
+            );
+            
+            // Update current version
+            this.currentVersion = baselineVersion;
+            
+            console.log(`✅ Baseline Version ${baselineVersion} created with initial state`);
+            console.log(`📋 Captured ${Object.keys(initialState).length} content items as baseline`);
+            
+            // Check if team members were captured
+            if (initialState['_team_members_data']) {
+                const teamMembers = JSON.parse(initialState['_team_members_data']);
+                console.log(`👥 Baseline includes ${teamMembers.length} team members`);
+            }
+            
+            return { success: true, version: baselineVersion };
+            
+        } catch (error) {
+            console.error('❌ Failed to create baseline version:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Cleanup
      */
     destroy() {

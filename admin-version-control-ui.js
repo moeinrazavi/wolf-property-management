@@ -46,14 +46,17 @@ class OptimizedVersionControlUI {
             // Add optimized UI elements
             this.addOptimizedUI();
             
-            // Set up event listeners
-            this.setupEventListeners();
-            
-            // Start performance monitoring
-            this.startPerformanceMonitoring();
-            
-            this.isInitialized = true;
-            console.log('✅ Optimized Version Control UI initialized successfully');
+                    // Set up event listeners
+        this.setupEventListeners();
+        
+        // Start performance monitoring
+        this.startPerformanceMonitoring();
+        
+        this.isInitialized = true;
+        console.log('✅ Optimized Version Control UI initialized successfully');
+        
+        // Update UI to show baseline version if it exists
+        this.updateUI();
             
         } catch (error) {
             console.error('❌ Failed to initialize Optimized Version Control UI:', error);
@@ -355,6 +358,11 @@ class OptimizedVersionControlUI {
                     </div>
                     <button class="history-close">&times;</button>
                 </div>
+                <div class="version-info">
+                    <p style="color: #666; font-size: 14px; margin: 10px 0;">
+                        💡 Each version is a checkpoint you can restore to. Version 1 is your baseline (original state).
+                    </p>
+                </div>
                 <div class="history-body">
                     <div class="performance-info">
                         <div class="perf-item">
@@ -402,12 +410,16 @@ class OptimizedVersionControlUI {
             `${version.version_number}_${this.versionManager.currentPage}`
         );
         
+        const isBaseline = version.version_number === 1 || (version.description && version.description.includes('Initial State'));
+        const versionClass = isBaseline ? 'optimized-version-item baseline-version' : 'optimized-version-item';
+        
         return `
-            <div class="optimized-version-item">
+            <div class="${versionClass}">
                 <div class="version-info">
                     <div class="version-header">
-                        <span class="version-number">v${version.version_number}</span>
+                        <span class="version-number">${isBaseline ? '📸 v' + version.version_number : 'v' + version.version_number}</span>
                         <div class="version-indicators">
+                            ${isBaseline ? '<span class="baseline-indicator" title="Baseline - Original State">🏠</span>' : ''}
                             ${isCached ? '<span class="cache-indicator" title="Cached - Instant Restore">📋</span>' : '<span class="build-indicator" title="Will build from changes">🔧</span>'}
                         </div>
                     </div>

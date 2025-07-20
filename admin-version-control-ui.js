@@ -281,20 +281,30 @@ class OptimizedVersionControlUI {
 
         const startTime = Date.now();
 
-        try {
-            // Get description from user
-            const description = this.promptForDescription();
-            
-            // **GITHUB-STYLE FIX**: Pass pending team member changes to version control
-            // Instead of saving them first, we let version control handle the entire flow
-            let pendingTeamChanges = null;
-            if (window.aboutAdminManager && window.aboutAdminManager.hasUnsavedChanges) {
-                console.log('📋 Getting pending team member changes for version control...');
-                pendingTeamChanges = window.aboutAdminManager.getPendingChangesForVersionControl();
-            }
-            
-            // Save changes with GitHub-style logic (version control will handle everything)
-            const result = await this.versionManager.saveChangesGitHubStyle(description, pendingTeamChanges);
+try {
+    // 1. Save logo changes first (if any pending)
+    if (window.saveLogoChanges) {
+        console.log('💾 Saving logo changes...');
+        const logoSaveResult = await window.saveLogoChanges();
+        if (!logoSaveResult) {
+            throw new Error('Failed to save logo changes');
+        }
+    }
+
+    // 2. Get description from user
+    const description = this.promptForDescription();
+    
+    // 3. Handle team member changes with GitHub-style approach
+    // Pass pending team member changes to version control instead of saving them first
+    let pendingTeamChanges = null;
+    if (window.aboutAdminManager && window.aboutAdminManager.hasUnsavedChanges) {
+        console.log('📋 Getting pending team member changes for version control...');
+        pendingTeamChanges = window.aboutAdminManager.getPendingChangesForVersionControl();
+    }
+    
+    // 4. Save changes with GitHub-style logic (version control handles everything)
+    const result = await this.versionManager.saveChangesGitHubStyle(description, pendingTeamChanges);
+    
             
             if (result.success) {
                 const saveTime = Date.now() - startTime;

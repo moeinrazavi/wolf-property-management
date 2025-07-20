@@ -10,10 +10,15 @@ import adminVersionControlUI from './admin-version-control-ui.js';
 window.adminVersionControlUI = adminVersionControlUI;
 window.dbService = dbService;
 
+// Make logo functions globally available
+window.saveLogoChanges = saveLogoChanges;
+window.hasPendingLogoChanges = () => pendingLogoChange !== null;
+
 // Global variables
 let isAdminLoggedIn = false;
 let hasUnsavedChanges = false;
 let originalContent = {};
+let pendingLogoChange = null; // Track pending logo changes
 
 // Get current page name
 const currentPage = window.location.pathname.split('/').pop() || 'index.html';
@@ -210,11 +215,11 @@ async function loadContentFromDatabase() {
         
         console.log(`🎉 Content loading complete! Applied ${appliedCount} out of ${Object.keys(latestContent).length} items.`);
         
-        // Load media content (unchanged)
+        // Load all media content including logo
         const { data: mediaData, error: mediaError } = await dbService.supabase
             .from('media_content')
             .select('*')
-            .eq('page_name', currentPage)
+            .or(`page_name.eq.${currentPage},page_name.eq.global`)
             .eq('is_active', true);
         
         if (mediaError) {
@@ -223,21 +228,36 @@ async function loadContentFromDatabase() {
             console.log('🖼️ Media loaded from database:', mediaData);
             
             // Apply media content to the page
-            mediaData.forEach(mediaItem => {
+            for (const mediaItem of mediaData) {
                 const elementId = mediaItem.element_id;
                 const mediaInfo = {
                     url: mediaItem.file_url,
                     alt: mediaItem.alt_text,
-                    type: mediaItem.file_type
+                    type: mediaItem.file_type,
+                    fileName: mediaItem.file_name
                 };
                 
                 // Handle different types of media elements
                 if (elementId === 'wolf-logo') {
                     const logoElement = document.querySelector('.logo-img');
-                    if (logoElement) {
-                        logoElement.src = mediaInfo.url;
-                        logoElement.alt = mediaInfo.alt;
-                        console.log(`✅ Applied logo: ${mediaInfo.url}`);
+                    if (logoElement && mediaInfo.fileName) {
+                        try {
+                            // Generate fresh signed URL for logo
+                            const signedUrl = await dbService.getFileUrl('wolf-property-images', mediaInfo.fileName, true);
+                            if (signedUrl) {
+                                logoElement.src = signedUrl;
+                                logoElement.alt = mediaInfo.alt;
+                                console.log(`✅ Applied logo with signed URL: ${mediaInfo.fileName}`);
+                            } else {
+                                logoElement.src = mediaInfo.url;
+                                logoElement.alt = mediaInfo.alt;
+                                console.log(`✅ Applied logo with fallback URL: ${mediaInfo.url}`);
+                            }
+                        } catch (error) {
+                            console.warn('⚠️ Error generating signed URL for logo, using fallback:', error);
+                            logoElement.src = mediaInfo.url;
+                            logoElement.alt = mediaInfo.alt;
+                        }
                     }
                 } else if (elementId.includes('hero-background')) {
                     const heroElement = document.querySelector('.hero');
@@ -246,7 +266,7 @@ async function loadContentFromDatabase() {
                         console.log(`✅ Applied hero background: ${mediaInfo.url}`);
                     }
                 }
-            });
+            }
         }
         
         console.log('✅ Content and media loaded successfully from database');
@@ -418,6 +438,9 @@ async function loginAdmin() {
     
     // Make text content editable
     makeContentEditable();
+    
+    // Make logo editable
+    makeLogoEditable();
     
     console.log('Admin logged in successfully');
 }
@@ -833,15 +856,22 @@ function updateSaveStatus() {
     const adminControls = document.querySelector('.admin-controls-content p');
     const saveButton = document.getElementById('save-changes-btn');
     
-    if (hasUnsavedChanges) {
-        adminControls.textContent = 'You have unsaved changes. Click "Save Changes" to apply them permanently.';
+    // Check for any type of unsaved changes including logo changes
+    const hasAnyUnsavedChanges = hasUnsavedChanges || pendingLogoChange !== null;
+    
+    if (hasAnyUnsavedChanges) {
+        let changeTypes = [];
+        if (hasUnsavedChanges) changeTypes.push('text content');
+        if (pendingLogoChange) changeTypes.push('logo');
+        
+        adminControls.textContent = `You have unsaved ${changeTypes.join(' and ')} changes. Click "Save Changes" to apply them permanently.`;
         adminControls.style.color = '#e74c3c';
         if (saveButton) {
             saveButton.disabled = false;
             saveButton.textContent = 'Save Changes';
         }
     } else {
-        adminControls.textContent = 'Click on any text to edit. Press Enter to save or Escape to cancel.';
+        adminControls.textContent = 'Click on any text to edit or logo to change image. Press Enter to save or Escape to cancel.';
         adminControls.style.color = 'rgba(255, 255, 255, 0.9)';
         if (saveButton) {
             saveButton.disabled = true;
@@ -898,3 +928,226 @@ function importChanges() {
 }
 
 // clearVersionHistory function removed - replaced by new VersionControlManager
+
+/**
+ * Make the website logo editable in admin mode
+ */
+function makeLogoEditable() {
+    const logo = document.querySelector('.logo');
+    const logoImg = document.querySelector('.logo-img');
+    
+    if (!logo || !logoImg) {
+        console.warn('⚠️ Logo elements not found');
+        return;
+    }
+    
+    console.log('🖼️ Making logo editable...');
+    
+    // Add click event to logo
+    logo.addEventListener('click', handleLogoClick);
+    
+    console.log('✅ Logo is now editable in admin mode');
+}
+
+/**
+ * Handle logo click in admin mode
+ */
+function handleLogoClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAdminLoggedIn) return;
+    
+    console.log('📷 Logo clicked - opening image browser...');
+    
+    // Use the global admin image manager to open the image browser
+    if (window.adminImageManager) {
+        window.adminImageManager.showImageBrowser((imageData) => {
+            // Handle both object format and individual parameters
+            if (typeof imageData === 'object' && imageData.publicUrl) {
+                assignLogoImage(imageData.publicUrl, imageData.signedUrl, imageData.filename);
+            } else {
+                // Legacy format - assume individual parameters
+                assignLogoImage(imageData, arguments[1], arguments[2]);
+            }
+        });
+    } else {
+        console.error('❌ Admin image manager not available');
+        alert('Image manager not available. Please try again.');
+    }
+}
+
+/**
+ * Assign a new image to the logo
+ */
+async function assignLogoImage(publicUrl, signedUrl, filename) {
+    console.log('🖼️ ASSIGNING LOGO IMAGE...');
+    console.log(`  - Raw parameters:`, { publicUrl, signedUrl, filename });
+    
+    // Handle if publicUrl is accidentally an object
+    if (typeof publicUrl === 'object') {
+        console.error('❌ Error: publicUrl is an object, not a string:', publicUrl);
+        alert('Invalid image data received. Please try selecting the image again.');
+        return;
+    }
+    
+    console.log(`  - Filename: ${filename}`);
+    console.log(`  - Permanent URL (to save): ${publicUrl}`);
+    console.log(`  - Temporary URL (for display): ${signedUrl}`);
+    
+    try {
+        const logoImg = document.querySelector('.logo-img');
+        const logo = document.querySelector('.logo');
+        
+        if (!logoImg || !logo) {
+            console.error('❌ Logo elements not found');
+            return;
+        }
+        
+        // Validate URLs
+        if (!publicUrl || !signedUrl) {
+            console.error('❌ Missing URL data:', { publicUrl, signedUrl });
+            alert('Missing image URL data. Please try again.');
+            return;
+        }
+        
+        // Extract the bucket path from the public URL
+        const urlParts = new URL(publicUrl);
+        const bucketPath = urlParts.pathname.split('/wolf-property-images/')[1];
+        
+        console.log(`  - Extracted Bucket Path (to save): ${bucketPath}`);
+        
+        // Store the pending change
+        pendingLogoChange = {
+            file_url: publicUrl,
+            file_name: bucketPath,
+            alt_text: 'Wolf Property Management Logo',
+            file_type: filename.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg'
+        };
+        
+        // Update the UI immediately with the temporary signed URL
+        logoImg.src = signedUrl;
+        logo.classList.add('pending-change');
+        
+        // Track the change in version control system
+        if (adminVersionControlUI.isReady()) {
+            adminVersionControlUI.trackModification(
+                'media',
+                'wolf-logo',
+                logoImg.src, // old value
+                publicUrl,   // new value
+                {
+                    page: 'global',
+                    elementType: 'logo',
+                    filename: bucketPath,
+                    timestamp: new Date().toISOString()
+                }
+            );
+        }
+        
+        // Mark as having unsaved changes
+        hasUnsavedChanges = true;
+        updateSaveStatus();
+        
+        // Visual feedback
+        logoImg.style.border = '3px solid #f39c12';
+        setTimeout(() => {
+            if (logoImg) {
+                logoImg.style.border = '';
+            }
+        }, 2000);
+        
+        console.log('✅ Logo change tracked as pending');
+        
+    } catch (error) {
+        console.error('❌ Error during logo assignment:', error);
+        alert(`Error assigning logo: ${error.message}`);
+    }
+}
+
+/**
+ * Save logo changes to database
+ */
+async function saveLogoChanges() {
+    if (!pendingLogoChange) {
+        console.log('📷 No pending logo changes to save');
+        return true;
+    }
+    
+    console.log('💾 Saving logo changes to database...');
+    console.log('📋 Logo change data:', pendingLogoChange);
+    
+    try {
+        // First, check if a logo record exists and what page_name it uses
+        const { data: existingLogo, error: selectError } = await dbService.supabase
+            .from('media_content')
+            .select('*')
+            .eq('element_id', 'wolf-logo')
+            .eq('is_active', true);
+        
+        if (selectError) {
+            console.error('❌ Error checking existing logo:', selectError);
+            throw selectError;
+        }
+        
+        console.log('🔍 Existing logo records found:', existingLogo);
+        
+        let saveResult;
+        if (existingLogo && existingLogo.length > 0) {
+            // Update existing record using its current page_name
+            const currentRecord = existingLogo[0];
+            console.log(`📝 Updating existing logo record with page_name: ${currentRecord.page_name}`);
+            
+            saveResult = await dbService.supabase
+                .from('media_content')
+                .update({
+                    file_name: pendingLogoChange.file_name,
+                    file_url: pendingLogoChange.file_url,
+                    file_type: pendingLogoChange.file_type,
+                    alt_text: pendingLogoChange.alt_text,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', currentRecord.id);
+        } else {
+            // Insert new record with 'global' page_name
+            console.log('➕ Creating new logo record with page_name: global');
+            
+            saveResult = await dbService.supabase
+                .from('media_content')
+                .insert({
+                    page_name: 'global',
+                    element_id: 'wolf-logo',
+                    file_name: pendingLogoChange.file_name,
+                    file_url: pendingLogoChange.file_url,
+                    file_type: pendingLogoChange.file_type,
+                    alt_text: pendingLogoChange.alt_text,
+                    is_active: true,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+        }
+        
+        if (saveResult.error) {
+            console.error('❌ Error saving logo to database:', saveResult.error);
+            throw saveResult.error;
+        }
+        
+        console.log('✅ Logo saved to database successfully');
+        
+        // Clear pending change
+        pendingLogoChange = null;
+        
+        // Remove pending indicator
+        const logo = document.querySelector('.logo');
+        if (logo) {
+            logo.classList.remove('pending-change');
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Failed to save logo changes:', error);
+        return false;
+    }
+}
+

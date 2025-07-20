@@ -811,24 +811,24 @@ footer::before {
     }
 
     .service-card img {
-        height: 240px;
-    }
+    height: 240px;
+}
 
     .footer-content {
         grid-template-columns: 1fr;
         gap: 32px;
-        text-align: center;
+    text-align: center;
     }
 
     .footer-nav {
-        text-align: center;
-    }
+    text-align: center;
+}
 
     .footer-nav ul {
         flex-direction: row;
         flex-wrap: wrap;
-        justify-content: center;
-    }
+    justify-content: center;
+}
 }
 
 @media (max-width: 480px) {
@@ -838,11 +838,11 @@ footer::before {
 
     .hero h2 {
         font-size: 1.25rem;
-    }
+}
 
     .hero p {
         font-size: 1rem;
-    }
+}
 
     .category-card {
         padding: 32px 24px;
@@ -1081,16 +1081,16 @@ footer::before {
     font-size: 1.125rem;
     position: relative;
     z-index: 2;
-}
+    }
 
 /* Team Members Section - Major Redesign */
 .team-members {
     padding: 140px 0;
     background: var(--white);
     position: relative;
-}
+    }
 
-.team-member {
+    .team-member {
     display: grid;
     grid-template-columns: 1fr 1.5fr;
     gap: 100px;
@@ -1316,7 +1316,7 @@ footer::before {
 .cta-section {
     padding: 140px 0;
     background: linear-gradient(135deg, var(--light-gray) 0%, #e2e8f0 100%);
-    text-align: center;
+        text-align: center;
     position: relative;
     overflow: hidden;
 }
@@ -1505,7 +1505,7 @@ footer::before {
     .team-member {
         gap: 80px;
         max-width: 1100px;
-    }
+}
 }
 
 @media (max-width: 992px) {
@@ -1513,7 +1513,7 @@ footer::before {
     .team-member:nth-child(even) {
         grid-template-columns: 1fr;
         gap: 50px;
-        text-align: center;
+    text-align: center;
         margin-bottom: 100px;
     }
     
@@ -1525,8 +1525,8 @@ footer::before {
     .team-member-image {
         max-width: 350px;
         margin: 0 auto;
-    }
-    
+}
+
     .position {
         text-align: center;
         border-left: none;
@@ -1537,9 +1537,9 @@ footer::before {
     }
     
     .social-links {
-        justify-content: center;
-    }
-    
+    justify-content: center;
+}
+
     .stats-grid {
         gap: 60px;
     }
@@ -1550,8 +1550,8 @@ footer::before {
         height: 65vh;
         padding: 0 16px;
         background-attachment: scroll;
-    }
-    
+}
+
     .about-company,
     .team-members,
     .cta-section {
@@ -1560,40 +1560,40 @@ footer::before {
     
     .section-header {
         margin-bottom: 80px;
-    }
-    
+}
+
     .about-content {
         margin-bottom: 80px;
-    }
-    
+}
+
     .about-text p {
         font-size: 1.125rem;
-    }
-    
+}
+
     .values-grid {
         grid-template-columns: 1fr;
         gap: 40px;
-    }
-    
+}
+
     .value-card {
         padding: 50px 30px;
         min-height: 300px;
-    }
-    
+}
+
     .team-member {
         margin-bottom: 80px;
         gap: 40px;
         padding: 0 16px;
-    }
-    
+}
+
     .team-member-image {
         max-width: 300px;
     }
     
     .team-member-info h3 {
         font-size: 2rem;
-    }
-    
+}
+
     .team-member-bio p {
         font-size: 1rem;
     }
@@ -1601,8 +1601,8 @@ footer::before {
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 50px;
-    }
-    
+}
+
     .stat-item {
         padding: 30px 15px;
     }
@@ -1611,8 +1611,8 @@ footer::before {
         flex-direction: column;
         align-items: center;
         gap: 16px;
-    }
-    
+}
+
     .social-link {
         width: 200px;
         text-align: center;
@@ -2974,3 +2974,436 @@ body.admin-mode .team-member {
         padding: 0 16px 16px 16px;
     }
 } 
+
+/* ===========================
+   FIXED ADMIN MODE TEAM STYLES 
+   =========================== */
+
+/* Professional admin mode team member container */
+body.admin-mode .team-member {
+    position: relative;
+    /* Preserve original grid layout - don't override margin/padding */
+    border-radius: 24px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.08), 
+        rgba(255, 255, 255, 0.04)
+    );
+    border: 2px solid transparent;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(15px);
+    margin-top: 40px; /* Space for pending badge and remove button */
+    padding: 32px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.04),
+        0 4px 16px rgba(0, 0, 0, 0.02),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+body.admin-mode .team-member:hover {
+    background: linear-gradient(135deg, 
+        rgba(52, 152, 219, 0.08), 
+        rgba(52, 152, 219, 0.04)
+    );
+    border-color: rgba(52, 152, 219, 0.25);
+    box-shadow: 
+        0 20px 60px rgba(52, 152, 219, 0.12),
+        0 12px 32px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-6px);
+}
+
+/* Professional team member remove button - will be added via JavaScript */
+
+/* Professional admin image styles - preserve original image layout */
+body.admin-mode .team-member-image {
+    cursor: pointer;
+    position: relative;
+    /* Don't override border-radius - keep original styling */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Removed redundant overlay that was creating the bar on top of image */
+
+body.admin-mode .team-member-image:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.18),
+        0 12px 24px rgba(52, 152, 219, 0.12);
+}
+
+/* Removed redundant hover effect */
+
+body.admin-mode .team-member-image::after {
+    content: '📷 Click to assign photo';
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, 
+        rgba(0, 0, 0, 0.95), 
+        rgba(0, 0, 0, 0.85)
+    );
+    color: white;
+    padding: 14px 24px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(20px);
+    white-space: nowrap;
+    z-index: 15;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 
+        0 12px 32px rgba(0, 0, 0, 0.4),
+        0 4px 8px rgba(0, 0, 0, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body.admin-mode .team-member-image:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-12px);
+}
+
+/* Enhanced admin text edit styles - professional and appealing */
+body.admin-mode [data-field] {
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin: -8px -12px;
+    cursor: text;
+    background: transparent;
+}
+
+body.admin-mode [data-field]:hover {
+    background: linear-gradient(135deg, 
+        rgba(52, 152, 219, 0.08), 
+        rgba(52, 152, 219, 0.04)
+    );
+    box-shadow: 
+        0 0 0 2px rgba(52, 152, 219, 0.2),
+        0 8px 24px rgba(52, 152, 219, 0.1);
+    transform: translateY(-2px);
+}
+
+body.admin-mode [data-field]::before {
+    content: '✏️';
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.95), 
+        rgba(248, 250, 252, 0.95)
+    );
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.12),
+        0 4px 8px rgba(0, 0, 0, 0.06);
+    z-index: 25;
+    border: 2px solid var(--accent-color);
+    backdrop-filter: blur(10px);
+}
+
+body.admin-mode [data-field]:hover::before {
+    opacity: 1;
+    transform: scale(1.2) translateY(-3px);
+    box-shadow: 
+        0 12px 32px rgba(0, 200, 150, 0.25),
+        0 6px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Professional team member info section in admin mode */
+body.admin-mode .team-member-info {
+    position: relative;
+    padding: 24px 0;
+    border-radius: 16px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.admin-mode .team-member-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -16px;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, 
+        var(--accent-color), 
+        var(--secondary-color)
+    );
+    border-radius: 2px;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.admin-mode .team-member:hover .team-member-info::before {
+    opacity: 1;
+    transform: scaleY(1.05);
+}
+
+/* Enhanced name styling in admin mode */
+body.admin-mode .team-member-info h3 {
+    position: relative;
+    padding: 8px 16px;
+    margin: -8px -16px 16px -16px;
+    border-radius: 12px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.admin-mode .team-member-info h3:hover {
+    background: linear-gradient(135deg, 
+        rgba(52, 152, 219, 0.06), 
+        rgba(52, 152, 219, 0.03)
+    );
+    transform: translateX(4px);
+}
+
+/* Enhanced position styling in admin mode */
+body.admin-mode .position {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.admin-mode .position:hover {
+    background: linear-gradient(90deg, 
+        rgba(255, 107, 53, 0.08), 
+        rgba(255, 107, 53, 0.04)
+    );
+    transform: translateX(4px);
+    border-left-color: var(--accent-color);
+}
+
+/* Enhanced bio styling in admin mode */
+body.admin-mode .team-member-bio p {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 6px 12px;
+    margin: -6px -12px 28px -12px;
+    border-radius: 10px;
+}
+
+body.admin-mode .team-member-bio p:hover {
+    background: linear-gradient(135deg, 
+        rgba(52, 152, 219, 0.05), 
+        rgba(52, 152, 219, 0.02)
+    );
+    transform: translateX(2px);
+}
+
+/* Professional admin mode indicator enhancement */
+body.admin-mode .team-members::before {
+    content: '⚙️ Admin Mode - Edit Team Members';
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, 
+        rgba(52, 152, 219, 0.95), 
+        rgba(52, 152, 219, 0.85)
+    );
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 20;
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    animation: adminIndicatorPulse 4s ease-in-out infinite;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 
+        0 8px 24px rgba(52, 152, 219, 0.3),
+        0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes adminIndicatorPulse {
+    0%, 100% { 
+        opacity: 0.9; 
+        transform: scale(1); 
+        box-shadow: 
+            0 8px 24px rgba(52, 152, 219, 0.3),
+            0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    50% { 
+        opacity: 1; 
+        transform: scale(1.05); 
+        box-shadow: 
+            0 12px 32px rgba(52, 152, 219, 0.4),
+            0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+}
+
+/* Add member button in admin mode */
+body.admin-mode .team-members::after {
+    content: '➕ Add Team Member';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, 
+        var(--accent-color), 
+        #00a576
+    );
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 
+        0 8px 24px rgba(0, 200, 150, 0.3),
+        0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+body.admin-mode .team-members::after:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 
+        0 12px 32px rgba(0, 200, 150, 0.4),
+        0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Remove member button styles removed - using delete-member-btn class instead */
+
+/* Responsive design for admin mode */
+@media (max-width: 768px) {
+    body.admin-mode .team-member {
+        margin-top: 35px;
+        padding: 24px 20px;
+    }
+    
+    body.admin-mode .delete-member-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+        top: -10px;
+        right: -10px;
+    }
+    
+    body.admin-mode .team-members::before {
+        top: 15px;
+        right: 15px;
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+    
+    body.admin-mode .team-members::after {
+        top: 15px;
+        left: 15px;
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+    
+    body.admin-mode .team-member-info {
+        padding: 20px 0;
+    }
+    
+    body.admin-mode .team-member-info::before {
+        left: -12px;
+        width: 3px;
+    }
+}
+
+@media (max-width: 480px) {
+    body.admin-mode .team-member {
+        margin-top: 30px;
+        padding: 20px 16px;
+    }
+    
+    body.admin-mode .delete-member-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+        top: -8px;
+        right: -8px;
+    }
+    
+    body.admin-mode .team-members::before,
+    body.admin-mode .team-members::after {
+        position: relative;
+        display: block;
+        margin: 10px auto 20px;
+        text-align: center;
+        top: auto;
+        left: auto;
+        right: auto;
+        width: fit-content;
+    }
+    
+    body.admin-mode .team-member-image::after {
+        font-size: 13px;
+        padding: 10px 16px;
+        bottom: 16px;
+    }
+}
+
+/* Professional team member remove button - will be added via JavaScript */
+
+/* Style for the actual delete button created by JavaScript */
+body.admin-mode .delete-member-btn {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border: 3px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 50;
+    box-shadow: 
+        0 8px 24px rgba(231, 76, 60, 0.3),
+        0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: scale(0.8);
+    font-family: inherit;
+}
+
+body.admin-mode .team-member:hover .delete-member-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+body.admin-mode .delete-member-btn:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+    transform: scale(1.1) !important;
+    box-shadow: 
+        0 12px 32px rgba(231, 76, 60, 0.4),
+        0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+body.admin-mode .delete-member-btn:active {
+    transform: scale(0.95) !important;
+    box-shadow: 
+        0 4px 12px rgba(231, 76, 60, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Clean admin styling - remove any conflicting admin image borders */
+body.admin-mode .team-member-image img {
+    border: none !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body.admin-mode .team-member-image img:hover {
+    transform: none !important;
+    border: none !important;
+}

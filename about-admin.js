@@ -332,27 +332,15 @@ class AboutAdminManager {
         const teamMemberImages = document.querySelectorAll('.team-member-image img');
         
         teamMemberImages.forEach(img => {
-            // Add visual indicator for admin mode
+            // Add visual indicator for admin mode - use CSS classes instead of inline styles
             img.style.cursor = 'pointer';
-            img.style.border = '3px dashed rgba(231, 76, 60, 0.5)';
-            img.style.transition = 'all 0.3s ease';
+            img.classList.add('admin-clickable-image');
             
             // Add click handler
             img.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 this.showImageSelector(img);
-            });
-
-            // Add hover effect
-            img.addEventListener('mouseenter', () => {
-                img.style.border = '3px dashed rgba(231, 76, 60, 0.8)';
-                img.style.transform = 'scale(1.05)';
-            });
-
-            img.addEventListener('mouseleave', () => {
-                img.style.border = '3px dashed rgba(231, 76, 60, 0.5)';
-                img.style.transform = 'scale(1)';
             });
         });
 
@@ -982,6 +970,7 @@ class AboutAdminManager {
 
         const deleteButton = document.createElement('button');
         deleteButton.className = 'delete-member-btn';
+        deleteButton.innerHTML = '🗑️';
         deleteButton.setAttribute('title', 'Mark for deletion');
         deleteButton.setAttribute('data-member-id', member.id);
 
@@ -1245,7 +1234,7 @@ class AboutAdminManager {
         const teamMemberImages = document.querySelectorAll('.team-member-image img');
         teamMemberImages.forEach(img => {
             img.style.cursor = '';
-            img.style.border = '';
+            img.classList.remove('admin-clickable-image');
             img.style.transition = '';
         });
 

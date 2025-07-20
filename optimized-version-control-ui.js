@@ -9,7 +9,7 @@
  * - Cache status display
  */
 
-import optimizedVersionControlManager from './version-control-manager.js';
+import optimizedVersionControlManager from './optimized-version-control-manager.js';
 
 class OptimizedVersionControlUI {
     constructor() {
@@ -46,17 +46,14 @@ class OptimizedVersionControlUI {
             // Add optimized UI elements
             this.addOptimizedUI();
             
-                    // Set up event listeners
-        this.setupEventListeners();
-        
-        // Start performance monitoring
-        this.startPerformanceMonitoring();
-        
-        this.isInitialized = true;
-        console.log('✅ Optimized Version Control UI initialized successfully');
-        
-        // Update UI to show baseline version if it exists
-        this.updateUI();
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            // Start performance monitoring
+            this.startPerformanceMonitoring();
+            
+            this.isInitialized = true;
+            console.log('✅ Optimized Version Control UI initialized successfully');
             
         } catch (error) {
             console.error('❌ Failed to initialize Optimized Version Control UI:', error);
@@ -268,7 +265,7 @@ class OptimizedVersionControlUI {
     }
 
     /**
-     * Handle save changes with GitHub-style version control
+     * Handle save changes with performance tracking
      */
     async handleSaveChanges() {
         const saveButton = document.getElementById('optimized-save-btn');
@@ -281,30 +278,18 @@ class OptimizedVersionControlUI {
 
         const startTime = Date.now();
 
-try {
-    // 1. Save logo changes first (if any pending)
-    if (window.saveLogoChanges) {
-        console.log('💾 Saving logo changes...');
-        const logoSaveResult = await window.saveLogoChanges();
-        if (!logoSaveResult) {
-            throw new Error('Failed to save logo changes');
-        }
-    }
-
-    // 2. Get description from user
-    const description = this.promptForDescription();
-    
-    // 3. Handle team member changes with GitHub-style approach
-    // Pass pending team member changes to version control instead of saving them first
-    let pendingTeamChanges = null;
-    if (window.aboutAdminManager && window.aboutAdminManager.hasUnsavedChanges) {
-        console.log('📋 Getting pending team member changes for version control...');
-        pendingTeamChanges = window.aboutAdminManager.getPendingChangesForVersionControl();
-    }
-    
-    // 4. Save changes with GitHub-style logic (version control handles everything)
-    const result = await this.versionManager.saveChangesGitHubStyle(description, pendingTeamChanges);
-    
+        try {
+            // Get description from user
+            const description = this.promptForDescription();
+            
+            // **CRITICAL FIX**: Save team member changes via about admin manager first
+            if (window.aboutAdminManager && window.aboutAdminManager.hasUnsavedChanges) {
+                console.log('🔄 Saving team member changes via about admin manager...');
+                await window.aboutAdminManager.saveAllChanges();
+            }
+            
+            // Save changes
+            const result = await this.versionManager.saveChanges(description);
             
             if (result.success) {
                 const saveTime = Date.now() - startTime;
@@ -312,11 +297,9 @@ try {
                     `✅ Version ${result.version} saved in ${saveTime}ms! (${result.changeCount} changes)`
                 );
                 
-                // Clear team manager pending changes since version control handled them
-                if (window.aboutAdminManager && pendingTeamChanges) {
-                    console.log('🔄 Clearing team manager pending changes...');
-                    window.aboutAdminManager.clearPendingChanges();
-                    // Refresh to show the applied changes
+                // **CRITICAL FIX**: Refresh team members from database to show saved changes
+                if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+                    console.log('🔄 Refreshing team members from database...');
                     await window.aboutAdminManager.loadTeamMembersFromDatabase();
                 }
                 
@@ -368,11 +351,6 @@ try {
                     </div>
                     <button class="history-close">&times;</button>
                 </div>
-                <div class="version-info">
-                    <p style="color: #666; font-size: 14px; margin: 10px 0;">
-                        💡 Each version is a checkpoint you can restore to. Version 1 is your baseline (original state).
-                    </p>
-                </div>
                 <div class="history-body">
                     <div class="performance-info">
                         <div class="perf-item">
@@ -420,17 +398,16 @@ try {
             `${version.version_number}_${this.versionManager.currentPage}`
         );
         
-        const isBaseline = version.version_number === 1 || (version.description && version.description.includes('Initial State'));
-        const versionClass = isBaseline ? 'optimized-version-item baseline-version' : 'optimized-version-item';
+        const changeCount = (version.content_changes_count || 0) + (version.team_changes_count || 0);
         
         return `
-            <div class="${versionClass}">
+            <div class="optimized-version-item">
                 <div class="version-info">
                     <div class="version-header">
-                        <span class="version-number">${isBaseline ? '📸 v' + version.version_number : 'v' + version.version_number}</span>
+                        <span class="version-number">v${version.version_number}</span>
                         <div class="version-indicators">
-                            ${isBaseline ? '<span class="baseline-indicator" title="Baseline - Original State">🏠</span>' : ''}
                             ${isCached ? '<span class="cache-indicator" title="Cached - Instant Restore">📋</span>' : '<span class="build-indicator" title="Will build from changes">🔧</span>'}
+                            ${changeCount > 0 ? `<span class="change-count">${changeCount}</span>` : ''}
                         </div>
                     </div>
                     <div class="version-description">${version.description || 'No description'}</div>
@@ -805,7 +782,7 @@ try {
 }
 
 // Create global instance
-const adminVersionControlUI = new OptimizedVersionControlUI();
+const optimizedVersionControlUI = new OptimizedVersionControlUI();
 
 // Export for use in other modules
-export default adminVersionControlUI; 
+export default optimizedVersionControlUI; 

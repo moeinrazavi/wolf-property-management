@@ -143,67 +143,44 @@ class OptimizedVersionControlManager {
     }
 
     /**
-     * Save all changes as a new version (GitHub-style)
-     * CRITICAL: Saves the CURRENT state as version checkpoint, then applies changes
+     * Save all changes as a new version (WordPress-style)
+     * CRITICAL: Saves the PREVIOUS state as the version checkpoint, then applies changes
      */
-    async saveChangesGitHubStyle(description = '', pendingTeamChanges = null) {
-        console.log('💾 Saving changes with GitHub-style version control...');
+    async saveChanges(description = '') {
+        console.log('💾 Saving changes as new version...');
 
         try {
-            // **STEP 1: Capture CURRENT state from database BEFORE any changes**
-            console.log('📸 Capturing current database state (BEFORE changes)...');
-            const currentContentState = await this.captureCurrentContentState();
-            
-            // Get content changes from session storage
+            // Get pending changes from session storage
             const pendingData = sessionStorage.getItem('versionControl_pendingChanges');
-            let contentChanges = [];
-            if (pendingData) {
-                const changesBatch = JSON.parse(pendingData);
-                contentChanges = changesBatch.changes || [];
-            }
-            
-            // Check if we have any changes to save
-            const hasContentChanges = contentChanges.length > 0;
-            const hasTeamChanges = pendingTeamChanges && Object.keys(pendingTeamChanges).length > 0;
-            
-            if (!hasContentChanges && !hasTeamChanges) {
+            if (!pendingData) {
                 return { success: true, message: 'No changes to save' };
             }
 
-            console.log(`📋 Found ${contentChanges.length} content changes and ${hasTeamChanges ? 'team member' : 'no team'} changes`);
+            const changesBatch = JSON.parse(pendingData);
+            if (!changesBatch.changes || changesBatch.changes.length === 0) {
+                return { success: true, message: 'No changes to save' };
+            }
 
-            // **STEP 2: Generate version number**
+            // **CRITICAL FIX**: Capture CURRENT content as the version checkpoint (before applying changes)
+            console.log('📸 Capturing current content state as version checkpoint...');
+            const currentContentState = await this.captureCurrentContentState();
+
+            // Generate version number
             const versionNumber = await this.getNextVersionNumber();
 
-            // **STEP 3: Save CURRENT state as the version checkpoint**
-            // This represents the state BEFORE the changes we're about to apply
-            await this.saveContentStateAsVersion(
-                currentContentState, 
-                versionNumber, 
-                description || this.generateAutoDescription(contentChanges, pendingTeamChanges)
-            );
+            // **IMPORTANT**: Save the PREVIOUS state (current content) as the version
+            // This way, restoring to this version will revert to the state BEFORE these changes
+            await this.saveContentStateAsVersion(currentContentState, versionNumber, description || this.generateAutoDescription(changesBatch.changes));
 
-            console.log(`📝 Version ${versionNumber} checkpoint created with CURRENT state (before changes)`);
-
-            // **STEP 4: Apply new changes to make them live**
-            let totalChanges = 0;
-            
-            // Apply content changes if any
-            if (hasContentChanges) {
-                console.log('✅ Applying content changes to database...');
-                await this.applyChangesToWebsiteContent(contentChanges);
-                totalChanges += contentChanges.length;
-            }
-            
-            // Apply team member changes if any
-            if (hasTeamChanges) {
-                console.log('✅ Applying team member changes to database...');
-                await this.applyTeamChangesToDatabase(pendingTeamChanges);
-                totalChanges += Object.keys(pendingTeamChanges).length;
-            }
-
-            // **STEP 5: Update version tracking**
+            // Update current version
             this.currentVersion = versionNumber;
+
+            // NOW apply the NEW changes to make them current
+            console.log('✅ Applying new changes to become current state...');
+            await this.applyChangesToWebsiteContent(changesBatch.changes);
+            
+            // Apply team member changes to team_members table
+            await this.applyChangesToTeamMembers(changesBatch.changes);
 
             // Create snapshot if needed
             if (versionNumber % this.SNAPSHOT_INTERVAL === 0) {
@@ -215,41 +192,31 @@ class OptimizedVersionControlManager {
             this.hasUnsavedChanges = false;
 
             // Update cache
-            if (hasContentChanges) {
-                this.updateCacheAfterSave(versionNumber, contentChanges);
-            }
+            this.updateCacheAfterSave(versionNumber, changesBatch.changes);
 
             // Cleanup old versions
             this.scheduleCleanup();
 
-            console.log(`✅ Version ${versionNumber} saved successfully with GitHub-style logic`);
-            console.log(`📋 Version ${versionNumber} = state BEFORE changes, current = state AFTER changes`);
-            
+            console.log(`✅ Version ${versionNumber} saved successfully`);
+            console.log(`📋 Version ${versionNumber} represents the state BEFORE these changes`);
             this.triggerEvent('versionSaved', { 
                 version: versionNumber, 
-                description: description || this.generateAutoDescription(contentChanges, pendingTeamChanges),
-                changeCount: totalChanges 
+                description: description || this.generateAutoDescription(changesBatch.changes),
+                changeCount: changesBatch.changes.length 
             });
 
             return {
                 success: true,
                 version: versionNumber,
-                description: description || this.generateAutoDescription(contentChanges, pendingTeamChanges),
-                changeCount: totalChanges
+                description: description || this.generateAutoDescription(changesBatch.changes),
+                changeCount: changesBatch.changes.length
             };
-            
+
         } catch (error) {
-            console.error('❌ Failed to save version with GitHub-style logic:', error);
+            console.error('❌ Failed to save version:', error);
             this.triggerEvent('saveError', { error: error.message });
             return { success: false, error: error.message };
         }
-    }
-
-    /**
-     * Legacy save method - redirects to GitHub-style save
-     */
-    async saveChanges(description = '') {
-        return await this.saveChangesGitHubStyle(description);
     }
 
     /**
@@ -421,7 +388,7 @@ class OptimizedVersionControlManager {
 
             console.log(`✅ Version ${versionNumber} saved as checkpoint`);
             return { success: true };
-
+            
         } catch (error) {
             console.error('❌ Failed to save content state as version:', error);
             throw error;
@@ -519,11 +486,11 @@ class OptimizedVersionControlManager {
             if (!versionContent) {
                 try {
                     const { data: statesData, error: statesError } = await this.dbService.supabase
-                .from('website_states')
-                .select('complete_state')
-                .eq('version_number', versionNumber)
+                        .from('website_states')
+                        .select('complete_state')
+                        .eq('version_number', versionNumber)
                         .eq('page_context', this.currentPage)
-                .single();
+                        .single();
 
                     if (!statesError && statesData && statesData.complete_state) {
                         versionContent = statesData.complete_state;
@@ -724,6 +691,7 @@ class OptimizedVersionControlManager {
             for (const [elementId, content] of Object.entries(versionContent)) {
                 // Skip internal tracking fields and team members data (handled separately)
                 if (elementId.startsWith('_')) continue;
+                
                 try {
                     // Find element on the page using multiple strategies
                     let element = null;
@@ -848,6 +816,7 @@ class OptimizedVersionControlManager {
             
             // First try: optimized content_versions table
             try {
+                console.log('🔄 Getting version history from content_versions table...');
                 const { data, error } = await this.dbService.supabase
                     .from('content_versions')
                     .select('version_number, description, created_at, version_type')
@@ -1122,7 +1091,7 @@ class OptimizedVersionControlManager {
                         if (updateError) {
                             console.warn(`Error updating content for ${elementId}:`, updateError);
                         }
-            } else {
+                    } else {
                         // Insert new content
                         const { error: insertError } = await this.dbService.supabase
                             .from('website_content')
@@ -1362,37 +1331,15 @@ class OptimizedVersionControlManager {
         }
     }
 
-    generateAutoDescription(contentChanges = [], teamChanges = null) {
-        const parts = [];
-        
-        // Analyze content changes
-        if (contentChanges && contentChanges.length > 0) {
-            const changeTypes = this.summarizeChangeTypes(contentChanges);
-            
-            if (changeTypes.update > 0) parts.push(`${changeTypes.update} content updates`);
-            if (changeTypes.create > 0) parts.push(`${changeTypes.create} content additions`);
-            if (changeTypes.delete > 0) parts.push(`${changeTypes.delete} content deletions`);
-        }
-        
-        // Analyze team member changes
-        if (teamChanges && Object.keys(teamChanges).length > 0) {
-            let teamCount = 0;
-            if (teamChanges.added) teamCount += teamChanges.added.length;
-            if (teamChanges.modified) {
-                teamCount += teamChanges.modified instanceof Map ? 
-                    teamChanges.modified.size : 
-                    Object.keys(teamChanges.modified).length;
-            }
-            if (teamChanges.deleted) teamCount += teamChanges.deleted.length;
-            
-            if (teamCount > 0) parts.push(`${teamCount} team member changes`);
-        }
-        
-        if (parts.length === 0) {
-            return `Auto-save ${new Date().toLocaleString()}`;
-        }
-        
-        return `Auto-save: ${parts.join(', ')} - ${new Date().toLocaleString()}`;
+    generateAutoDescription(changes) {
+        const changeTypes = this.summarizeChangeTypes(changes);
+        const descriptions = [];
+
+        if (changeTypes.update > 0) descriptions.push(`${changeTypes.update} updates`);
+        if (changeTypes.create > 0) descriptions.push(`${changeTypes.create} additions`);
+        if (changeTypes.delete > 0) descriptions.push(`${changeTypes.delete} deletions`);
+
+        return `Auto-save: ${descriptions.join(', ')} - ${new Date().toLocaleString()}`;
     }
 
     summarizeChangeTypes(changes) {
@@ -1497,112 +1444,6 @@ class OptimizedVersionControlManager {
                 success: false,
                 error: error.message
             };
-        }
-    }
-
-    /**
-     * Apply team member changes directly to database (GitHub-style)
-     */
-    async applyTeamChangesToDatabase(pendingTeamChanges) {
-        console.log('👥 Applying team member changes to database...');
-        
-        try {
-            // pendingTeamChanges should be an object with the structure:
-            // { added: [...], modified: Map/Object, deleted: [...] }
-            
-            if (pendingTeamChanges.added && pendingTeamChanges.added.length > 0) {
-                console.log(`➕ Adding ${pendingTeamChanges.added.length} new team members...`);
-                for (const newMember of pendingTeamChanges.added) {
-                    const { error } = await this.dbService.saveTeamMember(newMember);
-                    if (error) {
-                        console.error(`❌ Error adding team member ${newMember.name}:`, error);
-                    } else {
-                        console.log(`✅ Added team member: ${newMember.name}`);
-                    }
-                }
-            }
-            
-            if (pendingTeamChanges.modified) {
-                const modifiedEntries = pendingTeamChanges.modified instanceof Map ? 
-                    Array.from(pendingTeamChanges.modified.entries()) :
-                    Object.entries(pendingTeamChanges.modified);
-                    
-                console.log(`🔄 Updating ${modifiedEntries.length} team members...`);
-                for (const [memberId, changes] of modifiedEntries) {
-                    // Get the full member data and apply changes
-                    const { data: existingMember } = await this.dbService.supabase
-                        .from('team_members')
-                        .select('*')
-                        .eq('id', memberId)
-                        .single();
-                        
-                    if (existingMember) {
-                        const updatedMember = { ...existingMember, ...changes };
-                        const { error } = await this.dbService.saveTeamMember(updatedMember);
-                        if (error) {
-                            console.error(`❌ Error updating team member ${memberId}:`, error);
-                        } else {
-                            console.log(`✅ Updated team member: ${updatedMember.name}`);
-                        }
-                    }
-                }
-            }
-            
-            if (pendingTeamChanges.deleted && pendingTeamChanges.deleted.length > 0) {
-                console.log(`🗑️ Deleting ${pendingTeamChanges.deleted.length} team members...`);
-                for (const memberId of pendingTeamChanges.deleted) {
-                    const { error } = await this.dbService.deleteTeamMember(memberId);
-                    if (error) {
-                        console.error(`❌ Error deleting team member ${memberId}:`, error);
-                    } else {
-                        console.log(`✅ Deleted team member: ${memberId}`);
-                    }
-                }
-            }
-            
-            console.log('✅ All team member changes applied successfully');
-            
-        } catch (error) {
-            console.error('❌ Error applying team member changes:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Create baseline version (Version 0) - represents initial state before any changes
-     */
-    async createBaselineVersion() {
-        console.log('📸 Creating baseline version - capturing initial state...');
-        
-        try {
-            // Capture the current state as it exists right now
-            const initialState = await this.captureCurrentContentState();
-            
-            // Save this as Version 1 (the baseline)
-            const baselineVersion = 1;
-            await this.saveContentStateAsVersion(
-                initialState, 
-                baselineVersion, 
-                'Initial State - Baseline before any changes'
-            );
-            
-            // Update current version
-            this.currentVersion = baselineVersion;
-            
-            console.log(`✅ Baseline Version ${baselineVersion} created with initial state`);
-            console.log(`📋 Captured ${Object.keys(initialState).length} content items as baseline`);
-            
-            // Check if team members were captured
-            if (initialState['_team_members_data']) {
-                const teamMembers = JSON.parse(initialState['_team_members_data']);
-                console.log(`👥 Baseline includes ${teamMembers.length} team members`);
-            }
-            
-            return { success: true, version: baselineVersion };
-            
-        } catch (error) {
-            console.error('❌ Failed to create baseline version:', error);
-            throw error;
         }
     }
 

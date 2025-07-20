@@ -1,143 +1,258 @@
 /**
  * Debug Version Control System
- * Run this in browser console to diagnose issues
+ * Run this in browser console to trace exactly what's happening
  */
 
-// Debug function to check version control system status
-window.debugVersionControl = async function() {
-    console.log('🔍 Debug Version Control System');
-    console.log('=====================================');
+async function debugVersionControl() {
+    console.log('🔍 DEBUGGING VERSION CONTROL SYSTEM');
+    console.log('='.repeat(60));
     
-    // 1. Check if modules are loaded
-    console.log('📦 Checking module availability...');
-    console.log('- adminVersionControlUI:', typeof window.adminVersionControlUI !== 'undefined' ? '✅ Available' : '❌ Missing');
-    console.log('- aboutAdminManager:', typeof window.aboutAdminManager !== 'undefined' ? '✅ Available' : '❌ Missing');
-    console.log('- dbService:', typeof window.dbService !== 'undefined' ? '✅ Available' : '❌ Missing');
-    
-    // 2. Check if admin is logged in
-    console.log('\n🔐 Checking admin login status...');
-    if (typeof window.dbService !== 'undefined') {
-        console.log('- Admin authenticated:', window.dbService.isAuthenticated() ? '✅ Yes' : '❌ No');
-        console.log('- Current user:', window.dbService.currentUser || 'None');
+    if (!document.body.classList.contains('admin-mode')) {
+        console.error('❌ Please login as admin first');
+        return;
     }
     
-    // 3. Check database connection
-    console.log('\n🗄️ Checking database connection...');
+    if (!window.adminVersionControlUI || !window.adminVersionControlUI.getVersionManager()) {
+        console.error('❌ Version control system not available');
+        return;
+    }
+    
+    const versionManager = window.adminVersionControlUI.getVersionManager();
+    const dbService = window.dbService;
+    
     try {
-        if (typeof window.dbService !== 'undefined' && window.dbService.supabase) {
-            // Test basic connection
-            const { data, error } = await window.dbService.supabase
-                .from('admin_users')
-                .select('count', { count: 'exact', head: true });
+        console.log('\n1️⃣ CHECKING CURRENT DATABASE STATE');
+        console.log('-'.repeat(40));
+        
+        // Check what's currently in the database
+        const { data: currentContent, error: currentError } = await dbService.supabase
+            .from('website_content')
+            .select('element_id, content_text')
+            .eq('page_name', versionManager.currentPage)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false });
             
-            if (error) {
-                console.log('❌ Database connection error:', error);
-            } else {
-                console.log('✅ Database connection successful');
-            }
-        } else {
-            console.log('❌ Database service not available');
+        if (currentError) {
+            console.error('❌ Error getting current content:', currentError);
+            return;
         }
-    } catch (error) {
-        console.log('❌ Database test failed:', error);
-    }
-    
-    // 4. Check if website_states table exists
-    console.log('\n📋 Checking website_states table...');
-    try {
-        if (typeof window.dbService !== 'undefined' && window.dbService.supabase) {
-            const { data, error } = await window.dbService.supabase
-                .from('website_states')
-                .select('count', { count: 'exact', head: true });
+        
+        console.log('📋 Current content in database:');
+        currentContent.forEach(item => {
+            console.log(`   ${item.element_id}: "${item.content_text}"`);
+        });
+        
+        console.log('\n2️⃣ CHECKING PAGE CONTENT');
+        console.log('-'.repeat(40));
+        
+        // Check what's currently on the page
+        const editableElements = document.querySelectorAll('[data-editable-id], [contenteditable="true"]');
+        console.log('📋 Current content on page:');
+        editableElements.forEach(el => {
+            const id = el.getAttribute('data-editable-id') || el.id || 'unknown';
+            const content = el.textContent || el.innerText || '';
+            console.log(`   ${id}: "${content}"`);
+        });
+        
+        console.log('\n3️⃣ MAKING A TEST CHANGE');
+        console.log('-'.repeat(40));
+        
+        // Find first editable element to test with
+        const testElement = editableElements[0];
+        if (!testElement) {
+            console.error('❌ No editable elements found on page');
+            return;
+        }
+        
+        const originalTestContent = testElement.textContent;
+        const testElementId = testElement.getAttribute('data-editable-id') || testElement.id || 'test-element';
+        const newTestContent = `CHANGED AT ${new Date().toLocaleTimeString()}`;
+        
+        console.log(`📝 Test element: ${testElementId}`);
+        console.log(`   Original: "${originalTestContent}"`);
+        console.log(`   New: "${newTestContent}"`);
+        
+        // Track the change
+        versionManager.trackChange(
+            testElementId,
+            originalTestContent,
+            newTestContent,
+            'update',
+            { debug: true }
+        );
+        
+        console.log('✅ Change tracked');
+        
+        console.log('\n4️⃣ TESTING SAVE PROCESS');
+        console.log('-'.repeat(40));
+        
+        console.log('📸 Capturing current state before save...');
+        const capturedState = await versionManager.captureCurrentContentState();
+        console.log('📋 Captured state:');
+        Object.entries(capturedState).forEach(([id, content]) => {
+            console.log(`   ${id}: "${content}"`);
+        });
+        
+        console.log('\n💾 Saving changes...');
+        const saveResult = await versionManager.saveChanges('DEBUG: Test version');
+        
+        if (!saveResult.success) {
+            console.error(`❌ Save failed: ${saveResult.error}`);
+            return;
+        }
+        
+        console.log(`✅ Save successful - Version ${saveResult.version} created`);
+        
+        console.log('\n5️⃣ CHECKING WHAT WAS SAVED');
+        console.log('-'.repeat(40));
+        
+        // Check all possible version tables
+        const tables = ['version_history', 'content_versions', 'website_states'];
+        
+        for (const tableName of tables) {
+            try {
+                const { data, error } = await dbService.supabase
+                    .from(tableName)
+                    .select('*')
+                    .eq('version_number', saveResult.version)
+                    .limit(1);
             
-            if (error) {
-                console.log('❌ website_states table missing or inaccessible:', error);
-                console.log('📝 You need to run the database setup script:');
-                console.log(`
--- Run this in Supabase SQL Editor:
-DROP TABLE IF EXISTS version_history;
-
-CREATE TABLE website_states (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    version_number INTEGER NOT NULL,
-    description TEXT,
-    complete_state JSONB NOT NULL,
-    state_hash VARCHAR(64) NOT NULL,
-    page_context VARCHAR(100),
-    created_by UUID,
-    created_at TIMESTAMP DEFAULT NOW(),
-    is_temporary BOOLEAN DEFAULT false
-);
-
-CREATE INDEX idx_website_states_version ON website_states(version_number);
-CREATE INDEX idx_website_states_page ON website_states(page_context);
-CREATE INDEX idx_website_states_temp ON website_states(is_temporary);
-CREATE INDEX idx_website_states_hash ON website_states(state_hash);
-CREATE INDEX idx_website_states_created ON website_states(created_at);
-
-ALTER TABLE website_states ADD CONSTRAINT unique_version_page UNIQUE(version_number, page_context);
-                `);
-            } else {
-                console.log('✅ website_states table exists');
-                console.log('- Row count:', data);
+                if (!error && data && data.length > 0) {
+                    console.log(`✅ Found version in ${tableName}:`);
+                    console.log(data[0]);
+                    
+                    if (tableName === 'version_history' && data[0].changes) {
+                        console.log('📋 Version content:');
+                        Object.entries(data[0].changes).forEach(([id, content]) => {
+                            console.log(`   ${id}: "${content}"`);
+                        });
+                    }
+                }
+            } catch (e) {
+                console.log(`⚠️ ${tableName}: Not available`);
             }
         }
-    } catch (error) {
-        console.log('❌ Table check failed:', error);
-    }
-    
-    // 5. Check version control manager status
-    console.log('\n🔄 Checking version control manager...');
-    try {
-        if (typeof window.adminVersionControlUI !== 'undefined') {
-            const versionControlManager = window.adminVersionControlUI.getVersionControlManager();
-            if (versionControlManager) {
-                console.log('✅ Version control manager available');
-                console.log('- Initialized:', versionControlManager.isInitialized ? '✅ Yes' : '❌ No');
-                console.log('- Has changes:', versionControlManager.hasChanges() ? '✅ Yes' : '❌ No');
-                console.log('- Current version:', versionControlManager.getCurrentVersion());
-                console.log('- Version history count:', versionControlManager.getVersionHistory().length);
-            } else {
-                console.log('❌ Version control manager not available');
-            }
+        
+        console.log('\n6️⃣ CHECKING CURRENT STATE AFTER SAVE');
+        console.log('-'.repeat(40));
+        
+        const { data: afterSaveContent } = await dbService.supabase
+            .from('website_content')
+            .select('element_id, content_text')
+            .eq('page_name', versionManager.currentPage)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false });
+            
+        console.log('📋 Content in database after save:');
+        afterSaveContent.forEach(item => {
+            console.log(`   ${item.element_id}: "${item.content_text}"`);
+        });
+        
+        console.log('\n7️⃣ TESTING RESTORE');
+        console.log('-'.repeat(40));
+        
+        console.log(`🔄 Attempting to restore version ${saveResult.version}...`);
+        const restoreResult = await versionManager.restoreVersion(saveResult.version, false);
+        
+        if (restoreResult.success) {
+            console.log('✅ Restore completed');
+            console.log(`   Elements restored: ${restoreResult.elementsRestored}`);
+            console.log(`   Restore time: ${restoreResult.restoreTime}ms`);
         } else {
-            console.log('❌ Admin version control UI not available');
+            console.error(`❌ Restore failed: ${restoreResult.error}`);
+            return;
         }
+        
+        console.log('\n8️⃣ CHECKING FINAL STATE');
+        console.log('-'.repeat(40));
+        
+        const { data: finalContent } = await dbService.supabase
+            .from('website_content')
+            .select('element_id, content_text')
+            .eq('page_name', versionManager.currentPage)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false });
+            
+        console.log('📋 Final content in database:');
+        finalContent.forEach(item => {
+            console.log(`   ${item.element_id}: "${item.content_text}"`);
+        });
+        
+        console.log('📋 Final content on page:');
+        editableElements.forEach(el => {
+            const id = el.getAttribute('data-editable-id') || el.id || 'unknown';
+            const content = el.textContent || el.innerText || '';
+            console.log(`   ${id}: "${content}"`);
+        });
+        
+        console.log('\n🎯 ANALYSIS');
+        console.log('-'.repeat(40));
+        
+        // Compare what should have happened
+        const testElementFinalContent = document.querySelector(`[data-editable-id="${testElementId}"]`)?.textContent || '';
+        
+        console.log(`Expected behavior:`);
+        console.log(`   1. Version should contain: "${originalTestContent}" (before changes)`);
+        console.log(`   2. After restore, element should show: "${originalTestContent}"`);
+        console.log(`   3. Actual element shows: "${testElementFinalContent}"`);
+        
+        if (testElementFinalContent === originalTestContent) {
+            console.log('🎉 SUCCESS: Version control is working correctly!');
+        } else {
+            console.log('❌ PROBLEM: Content was not properly restored');
+            
+            // Find what went wrong
+            console.log('\n🔍 TROUBLESHOOTING:');
+            
+            // Check if version was saved properly
+            const versionFound = await checkVersionWasSaved(saveResult.version, originalTestContent);
+            if (!versionFound) {
+                console.log('❌ Issue: Version was not saved properly');
+            } else {
+                console.log('✅ Version was saved correctly');
+                console.log('❌ Issue: Restore process is not working properly');
+            }
+        }
+        
+        console.log('\n✅ DEBUG COMPLETE');
+        
     } catch (error) {
-        console.log('❌ Version control manager check failed:', error);
+        console.error('❌ Debug failed:', error);
     }
-    
-    // 6. Check current page elements
-    console.log('\n📄 Checking current page elements...');
-    const editableElements = document.querySelectorAll('.editable-text');
-    const adminControls = document.querySelector('.admin-controls');
-    const versionControlUI = document.getElementById('version-control-ui');
-    
-    console.log('- Editable elements:', editableElements.length);
-    console.log('- Admin controls visible:', adminControls && adminControls.style.display !== 'none' ? '✅ Yes' : '❌ No');
-    console.log('- Version control UI present:', versionControlUI ? '✅ Yes' : '❌ No');
-    
-    // 7. Test save functionality
-    console.log('\n💾 Testing save functionality...');
-    if (typeof window.adminVersionControlUI !== 'undefined' && window.adminVersionControlUI.isReady()) {
-        try {
-            const versionControlManager = window.adminVersionControlUI.getVersionControlManager();
-            console.log('✅ Version control ready for testing');
-            console.log('💡 To test save, make a change and press the Save Changes button');
-        } catch (error) {
-            console.log('❌ Save test failed:', error);
-        }
-    } else {
-        console.log('❌ Version control not ready for testing');
-    }
-    
-    console.log('\n🏁 Debug complete!');
-    console.log('=====================================');
-};
-
-// Auto-run if in admin mode
-if (document.body.classList.contains('admin-mode')) {
-    console.log('🔧 Version Control Debug Mode - run debugVersionControl() in console');
 }
 
-export default window.debugVersionControl; 
+async function checkVersionWasSaved(versionNumber, expectedContent) {
+    const dbService = window.dbService;
+    const versionManager = window.adminVersionControlUI.getVersionManager();
+    
+    // Check version_history table
+    try {
+        const { data, error } = await dbService.supabase
+            .from('version_history')
+            .select('changes')
+            .eq('version_number', versionNumber)
+            .eq('page_name', versionManager.currentPage)
+            .single();
+            
+        if (!error && data && data.changes) {
+            console.log('📋 Checking saved version content...');
+            Object.entries(data.changes).forEach(([id, content]) => {
+                console.log(`   ${id}: "${content}"`);
+                if (content === expectedContent) {
+                    console.log(`✅ Found expected content in version`);
+                    return true;
+                }
+            });
+        }
+    } catch (e) {
+        console.log('⚠️ Could not check version_history table');
+    }
+    
+    return false;
+}
+
+// Export to global
+window.debugVersionControl = debugVersionControl;
+
+console.log('🔍 Debug Version Control Script Loaded!');
+console.log('💡 Run: debugVersionControl()'); 

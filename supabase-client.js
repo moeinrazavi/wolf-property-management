@@ -869,6 +869,210 @@ class DatabaseService {
         }
     }
 
+    // Rental Listings methods
+    async getRentalListings() {
+        try {
+            console.log('🏠 Getting rental listings...');
+            
+            const { data, error } = await this.supabase
+                .from('rental_listings')
+                .select('*')
+                .eq('is_active', true)
+                .order('sort_order');
+
+            if (error) {
+                console.error('Get rental listings error:', error);
+                return { rentalListings: [], error: error.message };
+            }
+
+            console.log(`✅ Found ${data?.length || 0} rental listings`);
+            return { rentalListings: data || [], error: null };
+        } catch (error) {
+            console.error('Get rental listings error:', error);
+            return { rentalListings: [], error: error.message };
+        }
+    }
+
+    async saveRentalListing(rentalListingData) {
+        try {
+            console.log('💾 Saving rental listing:', rentalListingData.title);
+            console.log('📋 Full rental listing data:', rentalListingData);
+            
+            // Filter out UI-only properties that shouldn't be saved to database
+            const { isNew, isPending, hasChanges, ...dbData } = rentalListingData;
+            
+            // Check if this is a new listing with temporary ID
+            const isNewListing = !rentalListingData.id || rentalListingData.id.startsWith('temp_');
+            
+            // For new listings, exclude the temporary ID so database can auto-generate proper UUID
+            if (isNewListing) {
+                delete dbData.id;
+            }
+            
+            // Debug: Log all field values
+            console.log('📊 Rental listing fields being saved:');
+            Object.keys(dbData).forEach(key => {
+                const value = dbData[key];
+                console.log(`  ${key}: ${typeof value} - ${value}`);
+            });
+            
+            const listingData = {
+                ...dbData,
+                updated_at: new Date().toISOString()
+            };
+            
+            console.log('📤 Data being sent to database:', listingData);
+
+            let result;
+            if (!isNewListing) {
+                // Update existing listing
+                const { data, error } = await this.supabase
+                    .from('rental_listings')
+                    .update(listingData)
+                    .eq('id', rentalListingData.id)
+                    .select()
+                    .single();
+                
+                result = { data, error };
+            } else {
+                // Insert new listing
+                const { data, error } = await this.supabase
+                    .from('rental_listings')
+                    .insert(listingData)
+                    .select()
+                    .single();
+                
+                result = { data, error };
+            }
+
+            if (result.error) {
+                console.error('Save rental listing error:', result.error);
+                return { rentalListing: null, error: result.error.message };
+            }
+
+            console.log('✅ Rental listing saved successfully');
+            return { rentalListing: result.data, error: null };
+        } catch (error) {
+            console.error('Save rental listing error:', error);
+            return { rentalListing: null, error: error.message };
+        }
+    }
+
+    async deleteRentalListing(listingId) {
+        try {
+            console.log(`🗑️ Deleting rental listing: ${listingId}`);
+            
+            const { error } = await this.supabase
+                .from('rental_listings')
+                .update({ is_active: false })
+                .eq('id', listingId);
+
+            if (error) {
+                console.error('Delete rental listing error:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('✅ Rental listing deleted successfully');
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Delete rental listing error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async initializeRentalListingsTable() {
+        try {
+            console.log('🔧 Initializing rental_listings table...');
+            
+            // First check if table exists
+            const { data: existingListings, error: checkError } = await this.supabase
+                .from('rental_listings')
+                .select('count')
+                .limit(1);
+
+            if (checkError) {
+                console.log('📋 Rental listings table does not exist, creating...');
+                // Table doesn't exist, we need to create it using direct SQL
+                const createTableSQL = `
+                    -- Create rental_listings table
+                    CREATE TABLE IF NOT EXISTS rental_listings (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        title VARCHAR(500) NOT NULL,
+                        address VARCHAR(500) NOT NULL,
+                        city VARCHAR(200) DEFAULT 'Georgetown',
+                        state VARCHAR(50) DEFAULT 'TX',
+                        zip_code VARCHAR(20),
+                        rent_price DECIMAL(10, 2) NOT NULL,
+                        square_feet INTEGER,
+                        bedrooms INTEGER,
+                        bathrooms DECIMAL(3, 1),
+                        property_type VARCHAR(100) DEFAULT 'House',
+                        description TEXT,
+                        features TEXT,
+                        appliances TEXT,
+                        pet_policy TEXT,
+                        available_date DATE,
+                        lease_term VARCHAR(100),
+                        deposit_amount DECIMAL(10, 2),
+                        utilities_included TEXT,
+                        parking_info TEXT,
+                        primary_image_url TEXT,
+                        primary_image_filename VARCHAR(500),
+                        additional_images JSONB,
+                        virtual_tour_url TEXT,
+                        contact_info JSONB,
+                        neighborhood VARCHAR(200),
+                        amenities TEXT,
+                        restrictions TEXT,
+                        sort_order INTEGER DEFAULT 0,
+                        is_active BOOLEAN DEFAULT true,
+                        is_featured BOOLEAN DEFAULT false,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    );
+
+                    -- Create indexes
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_active ON rental_listings(is_active);
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_featured ON rental_listings(is_featured);
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_price ON rental_listings(rent_price);
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_bedrooms ON rental_listings(bedrooms);
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_city ON rental_listings(city);
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_sort ON rental_listings(sort_order);
+                    CREATE INDEX IF NOT EXISTS idx_rental_listings_available ON rental_listings(available_date);
+
+                    -- Disable RLS for initial setup
+                    ALTER TABLE rental_listings DISABLE ROW LEVEL SECURITY;
+                `;
+
+                console.log('⚠️ Please run the following SQL in your Supabase SQL Editor:');
+                console.log(createTableSQL);
+                
+                return { 
+                    success: false, 
+                    error: 'rental_listings table needs to be created. Please run the SQL script in Supabase SQL Editor.',
+                    sql: createTableSQL
+                };
+            }
+
+            console.log('✅ Rental listings table exists');
+            
+            // Check if we have existing listings
+            const { data: listings } = await this.supabase
+                .from('rental_listings')
+                .select('*')
+                .eq('is_active', true);
+
+            if (!listings || listings.length === 0) {
+                console.log('📝 No rental listings found, you can add some via admin panel...');
+            }
+
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Initialize rental listings table error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Utility methods
     getCurrentUser() {
         return this.currentUser;

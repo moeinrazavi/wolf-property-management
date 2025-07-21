@@ -96,7 +96,9 @@ class RentalsAdminManager {
             const result = await this.dbService.initializeRentalListingsTable();
             if (!result.success && result.sql) {
                 console.warn('⚠️ Database table needs to be created. Please run the SQL script.');
-                alert('Database setup required. Please run the rental listings table creation script in your Supabase SQL Editor.');
+                console.warn('SQL script:');
+                console.warn(result.sql);
+                // Don't block the page with alert - just log the warning
             }
         } catch (error) {
             console.error('Database initialization error:', error);
@@ -165,10 +167,34 @@ class RentalsAdminManager {
                 sampleListing.style.display = 'none';
             }
             
-            // Render each rental listing
-            for (const listing of this.rentalListings) {
-                const listingElement = await this.createRentalListingElement(listing);
-                listingsContainer.appendChild(listingElement);
+            // Use document fragment for efficient DOM manipulation
+            const fragment = document.createDocumentFragment();
+            
+            // Render listings in batches to avoid blocking the UI
+            const batchSize = 5;
+            for (let i = 0; i < this.rentalListings.length; i += batchSize) {
+                const batch = this.rentalListings.slice(i, i + batchSize);
+                
+                // Process batch asynchronously
+                const batchElements = await Promise.all(
+                    batch.map(listing => this.createRentalListingElement(listing))
+                );
+                
+                // Add batch to fragment
+                batchElements.forEach(element => fragment.appendChild(element));
+                
+                // Allow UI to breathe between batches
+                if (i + batchSize < this.rentalListings.length) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+            
+            // Append all elements at once
+            listingsContainer.appendChild(fragment);
+            
+            // Make listings editable if in admin mode
+            if (document.body.classList.contains('admin-mode')) {
+                this.makeAllListingsEditable();
             }
         }
         
@@ -189,18 +215,8 @@ class RentalsAdminManager {
             listingDiv.classList.add('pending-deletion');
         }
         
-        // Get proper image URL
+        // Use default image initially for faster rendering
         let imageUrl = listing.primary_image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
-        if (listing.primary_image_filename) {
-            try {
-                const signedUrl = await this.dbService.getFileUrl('wolf-property-images', listing.primary_image_filename, true);
-                if (signedUrl) {
-                    imageUrl = signedUrl;
-                }
-            } catch (error) {
-                console.error(`Error getting signed URL for image: ${listing.primary_image_filename}`, error);
-            }
-        }
         
         // Format available date
         const availableDate = listing.available_date ? new Date(listing.available_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : 'NOW';
@@ -219,7 +235,7 @@ class RentalsAdminManager {
         listingDiv.innerHTML = `
             ${pendingBadge}
             <div class="listing-image ${listing.isNew ? 'pending-new-border' : ''}">
-                <img src="${imageUrl}" alt="${listing.title}" data-listing-id="${listing.id}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';">
+                <img src="${imageUrl}" alt="${listing.title}" data-listing-id="${listing.id}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';">
                 ${listing.is_featured ? '<div class="listing-badges"><span class="featured-badge">Featured</span></div>' : ''}
             </div>
             <div class="listing-content">
@@ -242,16 +258,17 @@ class RentalsAdminManager {
                     </div>
                 </div>
                 <div class="listing-info">
-                    <h3 class="listing-title" data-listing-id="${listing.id}" data-field="title">${listing.title}</h3>
-                    <p class="listing-address" data-listing-id="${listing.id}" data-field="address">${listing.address}, ${listing.city}, ${listing.state} ${listing.zip_code} 
+                    <h3 class="listing-title" data-listing-id="${listing.id}" data-field="title">${listing.title || ''}</h3>
+                    <p class="listing-address" data-listing-id="${listing.id}" data-field="address">
+                        ${listing.address}, ${listing.city}, ${listing.state} ${listing.zip_code} 
                         <a href="#" class="map-link">📍 Map</a>
                     </p>
                     <div class="listing-description">
                         <p data-listing-id="${listing.id}" data-field="description">${listing.description || ''}</p>
                     </div>
                     <div class="listing-features">
-                        <p><strong>Appliances:</strong> <span data-listing-id="${listing.id}" data-field="appliances">${listing.appliances || 'Contact for details'}</span></p>
-                        <p><strong>Pet Policy:</strong> <span data-listing-id="${listing.id}" data-field="pet_policy">${listing.pet_policy || 'Contact for details'}</span></p>
+                        <p data-listing-id="${listing.id}" data-field="appliances"><strong>Appliances:</strong> ${listing.appliances || 'Not specified'}</p>
+                        <p data-listing-id="${listing.id}" data-field="pet_policy"><strong>Pet Policy:</strong> ${listing.pet_policy || 'Contact for details'}</p>
                     </div>
                     <div class="listing-actions">
                         <button class="btn btn-primary view-details-btn">View Details</button>
@@ -261,13 +278,40 @@ class RentalsAdminManager {
             </div>
         `;
         
-        // Add admin functionality if in admin mode
+        // Add admin delete button if in admin mode
         if (document.body.classList.contains('admin-mode')) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-listing-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.title = 'Delete Listing';
+            deleteBtn.addEventListener('click', () => this.deleteListing(listing.id));
+            listingDiv.appendChild(deleteBtn);
+            
+            // Make the listing editable
             this.makeRentalListingEditable(listingDiv);
-            this.addDeleteButton(listingDiv, listing);
+        }
+        
+        // Asynchronously load signed URL for better performance (non-blocking)
+        if (listing.primary_image_filename) {
+            this.loadSignedImageUrl(listing.primary_image_filename, listingDiv.querySelector('img'));
         }
         
         return listingDiv;
+    }
+
+    /**
+     * Asynchronously load signed image URL without blocking rendering
+     */
+    async loadSignedImageUrl(filename, imgElement) {
+        try {
+            const signedUrl = await this.dbService.getFileUrl('wolf-property-images', filename, true);
+            if (signedUrl && imgElement) {
+                imgElement.src = signedUrl;
+            }
+        } catch (error) {
+            console.warn(`Could not load signed URL for image: ${filename}`, error);
+            // Image will fall back to default URL already set
+        }
     }
 
     /**
@@ -656,16 +700,13 @@ class RentalsAdminManager {
                 square_feet: 1500,
                 bedrooms: 3,
                 bathrooms: 2,
-                property_type: 'House',
                 description: 'Click to edit this property description. Add details about the features, location, and amenities.',
-                features: 'Updated appliances, Modern fixtures, Spacious layout',
                 appliances: 'Dishwasher, Electric Range, Microwave',
                 pet_policy: 'Contact for pet policy details',
-                available_date: new Date().toISOString().split('T')[0],
+                available_date: 'Available Now',
                 primary_image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
                 primary_image_filename: null,
-                neighborhood: 'Downtown Georgetown',
-                amenities: 'Community amenities, Convenient location',
+                neighborhood: 'Georgetown',
                 sort_order: this.rentalListings.length + 1,
                 is_active: true,
                 is_featured: false,
@@ -998,6 +1039,35 @@ class RentalsAdminManager {
             throw error; // Re-throw so universal save button can handle the error
         }
     }
+
+    /**
+     * Make all rental listings editable (called after rendering in admin mode)
+     */
+    makeAllListingsEditable() {
+        const listingCards = document.querySelectorAll('.listing-card[data-listing-id]:not([data-listing-id="sample"])');
+        listingCards.forEach(card => {
+            this.makeRentalListingEditable(card);
+        });
+    }
+
+    /**
+     * Show sample listing for regular users (no database calls)
+     */
+    showSampleListing() {
+        const listingsContainer = document.getElementById('listings-container');
+        const noListingsElement = document.getElementById('no-listings');
+        const sampleListing = listingsContainer.querySelector('[data-listing-id="sample"]');
+        
+        if (sampleListing) {
+            sampleListing.style.display = 'block';
+        }
+        
+        if (noListingsElement) {
+            noListingsElement.style.display = 'none';
+        }
+        
+        console.log('✅ Showing sample listing for regular users');
+    }
 }
 
 // Create global instance
@@ -1038,9 +1108,14 @@ document.addEventListener('DOMContentLoaded', () => {
         rentalsAdminManager.initialize();
     }
     
-    // Also load rental listings from database on page load (for non-admin users)
+    // Only load rental listings for admin users or when specifically requested
+    // This prevents database calls from blocking the page for regular users
+    // Show sample listing for regular users
+    rentalsAdminManager.showSampleListing();
+    
+    // Also load rental listings from database on page load (for non-admin users) - matching about page pattern
     rentalsAdminManager.loadRentalListingsFromDatabase();
-
+    
     // Prevent accidental loss of unsaved changes
     window.addEventListener('beforeunload', (e) => {
         if (rentalsAdminManager.hasUnsavedChanges) {

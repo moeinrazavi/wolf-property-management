@@ -10,22 +10,22 @@ import adminVersionControlUI from './admin-version-control-ui.js';
 window.adminVersionControlUI = adminVersionControlUI;
 window.dbService = dbService;
 
-// Make logo functions globally available
-window.saveLogoChanges = saveLogoChanges;
-window.hasPendingLogoChanges = () => pendingLogoChange !== null;
-
 // Global variables
 let isAdminLoggedIn = false;
 let hasUnsavedChanges = false;
 let originalContent = {};
 let pendingLogoChange = null; // Track pending logo changes
 
+// Make logo functions globally available
+window.saveLogoChanges = saveLogoChanges;
+window.hasPendingLogoChanges = () => pendingLogoChange !== null;
+
 // Get current page name
 const currentPage = window.location.pathname.split('/').pop() || 'index.html';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Test database connection first
-    testDatabaseConnection();
+    // Test database connection in background (non-blocking)
+    setTimeout(() => testDatabaseConnection(), 100);
     
     // Header scroll effect
     const header = document.querySelector('header');
@@ -98,8 +98,9 @@ function setupContentRefresh() {
     }, 30000); // 30 seconds
 }
 
-// Test database connection
+// Test database connection (non-blocking background test)
 async function testDatabaseConnection() {
+    
     try {
         console.log('Testing database connection...');
         
@@ -691,7 +692,7 @@ function findElementByContent(content, elementId) {
     const textSignature = elementId.split('-').pop();
     const cleanContent = content.trim().toLowerCase();
     
-    // Define selectors in order of specificity
+    // Define selectors in order of specificity - EXCLUDE navigation elements
     const selectors = [
         // Hero section
         '.hero h1',
@@ -737,10 +738,10 @@ function findElementByContent(content, elementId) {
         '.stats-section h3',
         '.stats-section p',
         '.cta-section h2',
-        '.cta-section p',
+        '.cta-section p'
         
-        // Generic selectors
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span'
+        // NOTE: Removed generic selectors that could match navigation
+        // 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'span'
     ];
     
     // Try each selector and find the best match
@@ -748,6 +749,11 @@ function findElementByContent(content, elementId) {
         const elements = document.querySelectorAll(selector);
         
         for (const el of elements) {
+            // EXCLUDE navigation elements explicitly
+            if (el.closest('.nav-menu') || el.closest('.main-navigation') || el.closest('nav')) {
+                continue; // Skip navigation elements
+            }
+            
             const elText = el.textContent.trim().toLowerCase();
             
             // Skip if already has a data attribute (already processed)

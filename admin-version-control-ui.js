@@ -323,16 +323,16 @@ try {
                 if (window.aboutAdminManager && pendingTeamChanges) {
                     console.log('🔄 Clearing team manager pending changes...');
                     window.aboutAdminManager.clearPendingChanges();
-                    // Refresh to show the applied changes
-                    await window.aboutAdminManager.loadTeamMembersFromDatabase();
+                    // DON'T refresh - let about admin manager handle its own state
+                    // Removed: await window.aboutAdminManager.loadTeamMembersFromDatabase();
                 }
                 
                 // Clear rental manager pending changes since version control handled them
                 if (window.rentalsAdminManager && pendingRentalChanges) {
                     console.log('🔄 Clearing rental manager pending changes...');
                     window.rentalsAdminManager.clearPendingChanges();
-                    // Refresh to show the applied changes
-                    await window.rentalsAdminManager.loadRentalListingsFromDatabase();
+                    // DON'T refresh - let rentals admin manager handle its own state
+                    // Removed: await window.rentalsAdminManager.loadRentalListingsFromDatabase();
                 }
                 
             } else {
@@ -742,10 +742,11 @@ try {
             await window.loadContentFromDatabase();
         }
         
-        // Trigger team members refresh if on about page
-        if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
-            await window.aboutAdminManager.loadTeamMembersFromDatabase();
-        }
+        // DON'T trigger team members refresh - let about admin manager handle its own state
+        // This was causing infinite team member additions
+        // Removed: if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+        //     await window.aboutAdminManager.loadTeamMembersFromDatabase();
+        // }
     }
 
     showSuccessMessage(message) {

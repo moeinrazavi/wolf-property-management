@@ -15,6 +15,7 @@ class AboutAdminManager {
     constructor() {
         this.dbService = dbService;
         this.isInitialized = false;
+        this.isLoading = false; // Add loading flag to prevent concurrent calls
         this.currentImageSelector = null;
         this.currentTeamMemberId = null;
         this.teamMembers = [];
@@ -42,8 +43,13 @@ class AboutAdminManager {
             // Initialize database table if needed
             await this.initializeDatabase();
             
-            // Load team members from database
-            await this.loadTeamMembersFromDatabase();
+            // Only load team members if not already loaded
+            if (this.teamMembers.length === 0) {
+                await this.loadTeamMembersFromDatabase();
+            } else {
+                console.log('📋 Team members already loaded, re-rendering...');
+                await this.renderTeamMembers();
+            }
             
             // Set up admin interface
             this.addAdminControls();
@@ -83,25 +89,38 @@ class AboutAdminManager {
      * Load team members from database and render them
      */
     async loadTeamMembersFromDatabase() {
-        console.log('📋 Loading team members from database...');
-        
-        const { teamMembers, error } = await this.dbService.getTeamMembers('about.html');
-        
-        if (error) {
-            console.error('❌ Failed to load team members:', error);
+        // Prevent concurrent loading calls
+        if (this.isLoading) {
+            console.log('⚠️ Already loading team members, skipping...');
             return;
         }
         
-        // Store both current and original copies
-        this.teamMembers = teamMembers;
-        this.originalTeamMembers = JSON.parse(JSON.stringify(teamMembers)); // Deep copy
-        console.log(`✅ Loaded ${teamMembers.length} team members from database`);
+        this.isLoading = true;
+        console.log('📋 Loading team members from database...');
         
-        // Clear any pending changes
-        this.clearPendingChanges();
-        
-        // Render team members
-        await this.renderTeamMembers();
+        try {
+            const { teamMembers, error } = await this.dbService.getTeamMembers('about.html');
+            
+            if (error) {
+                console.error('❌ Failed to load team members:', error);
+                return;
+            }
+            
+            // Store both current and original copies
+            this.teamMembers = teamMembers;
+            this.originalTeamMembers = JSON.parse(JSON.stringify(teamMembers)); // Deep copy
+            console.log(`✅ Loaded ${teamMembers.length} team members from database`);
+            
+            // Clear any pending changes
+            this.clearPendingChanges();
+            
+            // Render team members
+            await this.renderTeamMembers();
+        } catch (error) {
+            console.error('❌ Error loading team members:', error);
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     /**
@@ -1290,10 +1309,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize immediately if already in admin mode
     if (document.body.classList.contains('admin-mode')) {
         aboutAdminManager.initialize();
+    } else {
+        // Load team members for non-admin users (only if not already loaded)
+        if (aboutAdminManager.teamMembers.length === 0) {
+            aboutAdminManager.loadTeamMembersFromDatabase();
+        }
     }
-    
-    // Also load team members from database on page load (for non-admin users)
-    aboutAdminManager.loadTeamMembersFromDatabase();
 
     // Prevent accidental loss of unsaved changes
     window.addEventListener('beforeunload', (e) => {

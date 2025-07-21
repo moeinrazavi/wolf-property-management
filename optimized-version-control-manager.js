@@ -190,31 +190,33 @@ class OptimizedVersionControlManager {
             // Clear session storage
             sessionStorage.removeItem('versionControl_pendingChanges');
             this.hasUnsavedChanges = false;
+            this.changeCache.clear();
 
-            // Update cache
-            this.updateCacheAfterSave(versionNumber, changesBatch.changes);
+            // DON'T refresh team members automatically - let about admin manager handle its own state
+            // This was causing infinite team member additions due to race conditions
+            // Removed: if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+            //     await window.aboutAdminManager.loadTeamMembersFromDatabase();
+            // }
 
-            // Cleanup old versions
-            this.scheduleCleanup();
+            const restoreTime = Date.now() - startTime;
+            console.log(`✅ Version ${versionNumber} restored successfully in ${restoreTime}ms`);
 
-            console.log(`✅ Version ${versionNumber} saved successfully`);
-            console.log(`📋 Version ${versionNumber} represents the state BEFORE these changes`);
-            this.triggerEvent('versionSaved', { 
+            this.triggerEvent('versionRestored', { 
                 version: versionNumber, 
-                description: description || this.generateAutoDescription(changesBatch.changes),
-                changeCount: changesBatch.changes.length 
+                restoreTime 
             });
 
             return {
                 success: true,
                 version: versionNumber,
-                description: description || this.generateAutoDescription(changesBatch.changes),
-                changeCount: changesBatch.changes.length
+                restoreTime,
+                method: 'version_restore',
+                elementsRestored: Object.keys(versionContent).length
             };
 
         } catch (error) {
-            console.error('❌ Failed to save version:', error);
-            this.triggerEvent('saveError', { error: error.message });
+            console.error('❌ Failed to restore version:', error);
+            this.triggerEvent('restoreError', { error: error.message });
             return { success: false, error: error.message };
         }
     }
@@ -518,10 +520,11 @@ class OptimizedVersionControlManager {
             this.hasUnsavedChanges = false;
             this.changeCache.clear();
 
-            // Refresh team members if on about page to sync with any team member changes
-            if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
-                await window.aboutAdminManager.loadTeamMembersFromDatabase();
-            }
+            // DON'T refresh team members automatically - let about admin manager handle its own state
+            // This was causing infinite team member additions due to race conditions
+            // Removed: if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+            //     await window.aboutAdminManager.loadTeamMembersFromDatabase();
+            // }
 
             const restoreTime = Date.now() - startTime;
             console.log(`✅ Version ${versionNumber} restored successfully in ${restoreTime}ms`);
@@ -654,19 +657,44 @@ class OptimizedVersionControlManager {
                 
             // Then insert/restore the version team members
             for (const member of teamMembersData) {
-                // Remove the original id to avoid conflicts, let database generate new ones
-                const { id: originalId, ...memberData } = member;
-                
-                const { error } = await this.dbService.supabase
+                // Instead of removing ID and creating duplicates, check if member exists by name
+                const { data: existingMember } = await this.dbService.supabase
                     .from('team_members')
-                    .upsert({
-                        ...memberData,
-                        is_active: true,
-                        updated_at: new Date().toISOString()
-                    });
-                    
-                if (error) {
-                    console.error('❌ Error restoring team member:', error);
+                    .select('id')
+                    .eq('name', member.name)
+                    .eq('page_name', this.currentPage)
+                    .eq('is_active', false) // Should be inactive from the update above
+                    .single();
+                
+                if (existingMember) {
+                    // Update existing member
+                    const { error } = await this.dbService.supabase
+                        .from('team_members')
+                        .update({
+                            ...member,
+                            id: existingMember.id, // Keep the existing ID
+                            is_active: true,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', existingMember.id);
+                        
+                    if (error) {
+                        console.error('❌ Error updating existing team member:', error);
+                    }
+                } else {
+                    // Create new member (remove the original id to avoid conflicts)
+                    const { id: originalId, ...memberData } = member;
+                    const { error } = await this.dbService.supabase
+                        .from('team_members')
+                        .insert({
+                            ...memberData,
+                            is_active: true,
+                            updated_at: new Date().toISOString()
+                        });
+                        
+                    if (error) {
+                        console.error('❌ Error creating new team member:', error);
+                    }
                 }
             }
             
@@ -792,9 +820,13 @@ class OptimizedVersionControlManager {
                     window.aboutAdminManager.clearPendingChanges();
                 }
                 
-                // Re-render the team members section
-                await window.aboutAdminManager.renderTeamMembers();
-                console.log('✅ Team members section re-rendered');
+                // ONLY re-render if not currently loading to prevent conflicts
+                if (!window.aboutAdminManager.isLoading) {
+                    await window.aboutAdminManager.renderTeamMembers();
+                    console.log('✅ Team members section re-rendered');
+                } else {
+                    console.log('⚠️ About admin manager is loading, skipping re-render to prevent conflicts');
+                }
             } else {
                 // Fallback: try to refresh the page section or show a message
                 console.log('⚠️ aboutAdminManager not available, page refresh may be needed to see team member changes');

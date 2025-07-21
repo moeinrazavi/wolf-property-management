@@ -994,36 +994,28 @@ class DatabaseService {
                 console.log('📋 Rental listings table does not exist, creating...');
                 // Table doesn't exist, we need to create it using direct SQL
                 const createTableSQL = `
-                    -- Create rental_listings table
-                    CREATE TABLE IF NOT EXISTS rental_listings (
+                    -- Drop existing rental_listings table if it exists
+                    DROP TABLE IF EXISTS rental_listings;
+                    
+                    -- Create simplified rental_listings table (matching team_members pattern)
+                    CREATE TABLE rental_listings (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                        title VARCHAR(500) NOT NULL,
-                        address VARCHAR(500) NOT NULL,
-                        city VARCHAR(200) DEFAULT 'Georgetown',
-                        state VARCHAR(50) DEFAULT 'TX',
+                        title VARCHAR(255) NOT NULL,
+                        address VARCHAR(255) NOT NULL,
+                        city VARCHAR(100) DEFAULT 'Georgetown',
+                        state VARCHAR(10) DEFAULT 'TX',
                         zip_code VARCHAR(20),
-                        rent_price DECIMAL(10, 2) NOT NULL,
+                        rent_price DECIMAL(8, 2) NOT NULL,
                         square_feet INTEGER,
                         bedrooms INTEGER,
                         bathrooms DECIMAL(3, 1),
-                        property_type VARCHAR(100) DEFAULT 'House',
                         description TEXT,
-                        features TEXT,
                         appliances TEXT,
                         pet_policy TEXT,
-                        available_date DATE,
-                        lease_term VARCHAR(100),
-                        deposit_amount DECIMAL(10, 2),
-                        utilities_included TEXT,
-                        parking_info TEXT,
+                        available_date VARCHAR(50),
                         primary_image_url TEXT,
-                        primary_image_filename VARCHAR(500),
-                        additional_images JSONB,
-                        virtual_tour_url TEXT,
-                        contact_info JSONB,
-                        neighborhood VARCHAR(200),
-                        amenities TEXT,
-                        restrictions TEXT,
+                        primary_image_filename VARCHAR(255),
+                        neighborhood VARCHAR(100),
                         sort_order INTEGER DEFAULT 0,
                         is_active BOOLEAN DEFAULT true,
                         is_featured BOOLEAN DEFAULT false,
@@ -1031,16 +1023,11 @@ class DatabaseService {
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     );
 
-                    -- Create indexes
+                    -- Create minimal indexes (matching team_members pattern)
                     CREATE INDEX IF NOT EXISTS idx_rental_listings_active ON rental_listings(is_active);
-                    CREATE INDEX IF NOT EXISTS idx_rental_listings_featured ON rental_listings(is_featured);
-                    CREATE INDEX IF NOT EXISTS idx_rental_listings_price ON rental_listings(rent_price);
-                    CREATE INDEX IF NOT EXISTS idx_rental_listings_bedrooms ON rental_listings(bedrooms);
-                    CREATE INDEX IF NOT EXISTS idx_rental_listings_city ON rental_listings(city);
                     CREATE INDEX IF NOT EXISTS idx_rental_listings_sort ON rental_listings(sort_order);
-                    CREATE INDEX IF NOT EXISTS idx_rental_listings_available ON rental_listings(available_date);
 
-                    -- Disable RLS for initial setup
+                    -- Disable RLS for initial setup (matching team_members)
                     ALTER TABLE rental_listings DISABLE ROW LEVEL SECURITY;
                 `;
 
@@ -1063,7 +1050,43 @@ class DatabaseService {
                 .eq('is_active', true);
 
             if (!listings || listings.length === 0) {
-                console.log('📝 No rental listings found, you can add some via admin panel...');
+                console.log('📝 No rental listings found, inserting default listings...');
+                
+                // Insert default rental listings to match the sample in HTML
+                const defaultListings = [
+                    {
+                        title: '148 Ammonite Ln - Jarrell',
+                        address: '148 Ammonite Ln',
+                        city: 'Jarrell',
+                        state: 'TX',
+                        zip_code: '76537',
+                        rent_price: 2100.00,
+                        square_feet: 2806,
+                        bedrooms: 4,
+                        bathrooms: 2.5,
+                        description: 'Spacious and versatile 4-bedroom, 2.5-bath home in Sonterra, Jarrell! This two-story residence boasts over 2,800 sq ft, offering a flexible floor plan to fit your lifestyle. Downstairs includes a large living room, a dedicated formal dining/office space, and a huge kitchen with granite countertops, tall cabinets, and pantry. The oversized laundry room includes extra shelving and storage.',
+                        appliances: 'Dishwasher, Electric Range, Microwave',
+                        pet_policy: 'Cats allowed, Small dogs allowed',
+                        available_date: '8/5/25',
+                        primary_image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                        primary_image_filename: null,
+                        neighborhood: 'Sonterra',
+                        sort_order: 1,
+                        is_active: true,
+                        is_featured: true
+                    }
+                ];
+
+                const { error: insertError } = await this.supabase
+                    .from('rental_listings')
+                    .insert(defaultListings);
+
+                if (insertError) {
+                    console.error('Error inserting default rental listings:', insertError);
+                    return { success: false, error: insertError.message };
+                }
+
+                console.log('✅ Default rental listings inserted');
             }
 
             return { success: true, error: null };

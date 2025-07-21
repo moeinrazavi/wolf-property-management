@@ -32,6 +32,20 @@ class DatabaseService {
             // Simple password check (in production, use proper hashing)
             if (data && data.password_hash === password) {
                 this.currentUser = data;
+                
+                // Store authentication state in localStorage for persistence
+                try {
+                    localStorage.setItem('admin_user', JSON.stringify({
+                        id: data.id,
+                        email: data.email,
+                        is_active: data.is_active,
+                        loginTime: new Date().toISOString()
+                    }));
+                    console.log('Admin session stored in localStorage');
+                } catch (storageError) {
+                    console.warn('Could not store session in localStorage:', storageError);
+                }
+                
                 console.log('Authentication successful for:', email);
                 
                 // Update last login
@@ -57,6 +71,15 @@ class DatabaseService {
 
     async signOut() {
         this.currentUser = null;
+        
+        // Clear authentication state from localStorage
+        try {
+            localStorage.removeItem('admin_user');
+            console.log('Admin session cleared from localStorage');
+        } catch (storageError) {
+            console.warn('Could not clear session from localStorage:', storageError);
+        }
+        
         return { error: null };
     }
 
@@ -1102,7 +1125,66 @@ class DatabaseService {
     }
 
     isAuthenticated() {
-        return this.currentUser !== null;
+        // Check memory first
+        if (this.currentUser !== null) {
+            return true;
+        }
+        
+        // Check localStorage for persistent session
+        try {
+            const storedUser = localStorage.getItem('admin_user');
+            if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                // Restore user data to memory
+                this.currentUser = userData;
+                return true;
+            }
+        } catch (error) {
+            console.warn('Could not restore session from localStorage:', error);
+            // Clear invalid localStorage data
+            localStorage.removeItem('admin_user');
+        }
+        
+        return false;
+    }
+
+    /**
+     * Restore admin session from localStorage
+     * Call this on page load to restore authentication state
+     */
+    async restoreSession() {
+        try {
+            const storedUser = localStorage.getItem('admin_user');
+            if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                
+                // Validate that the user still exists and is active in the database
+                const { data, error } = await this.supabase
+                    .from('admin_users')
+                    .select('*')
+                    .eq('id', userData.id)
+                    .eq('is_active', true)
+                    .single();
+                
+                if (error || !data) {
+                    console.warn('Stored session is invalid, clearing localStorage');
+                    localStorage.removeItem('admin_user');
+                    this.currentUser = null;
+                    return false;
+                }
+                
+                // Restore full user data
+                this.currentUser = data;
+                console.log('Admin session restored from localStorage:', userData.email);
+                return true;
+            }
+        } catch (error) {
+            console.warn('Could not restore session from localStorage:', error);
+            localStorage.removeItem('admin_user');
+            this.currentUser = null;
+        }
+        
+        return false;
     }
 
     getPageContentMapping(pageName) {

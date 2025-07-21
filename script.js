@@ -335,6 +335,17 @@ function isElementMatch(element, elementId) {
 // updateVersionDisplay function removed - replaced by new VersionControlManager
 
 // Admin System Functions
+async function initializeAdminSession() {
+    try {
+        const isRestored = await dbService.restoreSession();
+        if (isRestored) {
+            loginAdmin();
+        }
+    } catch (error) {
+        console.warn('Could not restore admin session:', error);
+    }
+}
+
 function initializeAdminSystem() {
     const adminLoginBtn = document.getElementById('admin-login-btn');
     const adminModal = document.getElementById('admin-modal');
@@ -343,10 +354,8 @@ function initializeAdminSystem() {
     const adminLogoutBtn = document.getElementById('admin-logout');
     // Old save modal elements removed - now using professional version control panel
 
-    // Check if admin is already logged in
-    if (dbService.isAuthenticated()) {
-        loginAdmin();
-    }
+    // Check if admin is already logged in and restore session
+    initializeAdminSession();
 
     // Admin login button click
     adminLoginBtn.addEventListener('click', (e) => {

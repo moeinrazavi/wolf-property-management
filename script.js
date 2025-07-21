@@ -340,9 +340,7 @@ function initializeAdminSystem() {
     const adminClose = document.querySelector('.admin-close');
     const adminLoginForm = document.getElementById('admin-login-form');
     const adminLogoutBtn = document.getElementById('admin-logout');
-    const saveModal = document.getElementById('save-modal');
-    const saveConfirm = document.getElementById('save-confirm');
-    const saveCancel = document.getElementById('save-cancel');
+    // Old save modal elements removed - now using professional version control panel
 
     // Check if admin is already logged in
     if (dbService.isAuthenticated()) {
@@ -820,9 +818,7 @@ function levenshteinDistance(str1, str2) {
     return matrix[str2.length][str1.length];
 }
 
-function showSaveModal() {
-    document.getElementById('save-modal').style.display = 'block';
-}
+// Old showSaveModal function removed - now using professional version control panel
 
 // saveChanges function removed - replaced by new VersionControlManager
 

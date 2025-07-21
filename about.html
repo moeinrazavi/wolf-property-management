@@ -182,18 +182,50 @@
     <!-- Admin Login Modal -->
     <div id="admin-modal" class="admin-modal">
         <div class="admin-modal-content">
-            <span class="admin-close">&times;</span>
-            <h2>Admin Login</h2>
+            <button class="admin-close" aria-label="Close login modal">&times;</button>
+            
+            <div class="admin-modal-header">
+                <h2>Admin Access</h2>
+                <p class="admin-modal-subtitle">Sign in to manage your property content</p>
+            </div>
+            
             <form id="admin-login-form">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="username">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="username" 
+                        name="username" 
+                        placeholder="admin@wolfpm.com"
+                        required 
+                        autocomplete="username"
+                    >
+                    <div class="error-message">Please enter a valid email address</div>
                 </div>
+                
                 <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Enter your password"
+                        required 
+                        autocomplete="current-password"
+                    >
+                    <div class="error-message">Password is required</div>
                 </div>
-                <button type="submit" class="btn btn-admin">Login</button>
+                
+                <button type="submit" class="btn btn-admin">
+                    <span class="btn-text">Sign In</span>
+                </button>
+                
+                <div class="security-notice">
+                    <p>
+                        <span class="icon">🔒</span>
+                        Your login is secured with enterprise-grade encryption
+                    </p>
+                </div>
             </form>
         </div>
     </div>
@@ -206,19 +238,11 @@
         </div>
         <div class="admin-controls-content">
             <p>Click on any text to edit. Press Enter to save or Escape to cancel.</p>
+            
+
         </div>
     </div>
 
-    <!-- Save Changes Modal -->
-    <div id="save-modal" class="save-modal">
-        <div class="save-modal-content">
-            <h3>Save Changes</h3>
-            <p>Do you want to save your changes?</p>
-            <div class="save-modal-buttons">
-                <button id="save-confirm" class="btn btn-primary">Save</button>
-                <button id="save-cancel" class="btn btn-secondary">Cancel</button>
-            </div>
-        </div>
-    </div>
+
 </body>
 </html> 

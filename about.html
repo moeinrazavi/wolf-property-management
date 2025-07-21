@@ -12,22 +12,49 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="logo">
-                <img src="https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/wolf-logo.png" alt="Wolf Property Management Logo" class="logo-img">
+    <header class="modern-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <img src="https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/wolf-logo.png" alt="Wolf Property Management Logo" class="logo-img">
+                    <div class="logo-text">
+                        <span class="brand-name">Wolf Property</span>
+                        <span class="brand-tagline">Management</span>
+                    </div>
+                </div>
             </div>
-            <nav>
-                <ul>
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="#rentals">Available Rentals</a></li>
-                    <li><a href="#services">Management Services</a></li>
-                    <li><a href="about.html" class="active">About</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <li><a href="#search" class="search-icon">🔍</a></li>
-                    <li><a href="#" id="admin-login-btn" class="admin-login-btn">Admin</a></li>
+            
+            <nav class="main-navigation">
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="index.html" class="nav-link">Home</a></li>
+                    <li class="nav-item"><a href="#rentals" class="nav-link">Available Rentals</a></li>
+                    <li class="nav-item"><a href="#services" class="nav-link">Management Services</a></li>
+                    <li class="nav-item"><a href="about.html" class="nav-link active">About</a></li>
+                    <li class="nav-item"><a href="#contact" class="nav-link">Contact</a></li>
                 </ul>
             </nav>
+            
+            <div class="header-actions">
+                <button class="search-btn" aria-label="Search">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button id="admin-login-btn" class="admin-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Admin</span>
+                </button>
+                
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -218,6 +245,7 @@
     <script type="module" src="emergency-fix.js"></script>
     <script src="debug-optimized-version-control.js"></script>
     <script src="professional-icons.js"></script>
+    <script src="modern-navigation.js"></script>
 
     <!-- Admin Login Modal -->
     <div id="admin-modal" class="admin-modal">

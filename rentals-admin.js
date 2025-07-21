@@ -45,12 +45,18 @@ class RentalsAdminManager {
             // Load rental listings from database
             await this.loadRentalListingsFromDatabase();
             
+            // Store original state for version control
+            this.originalRentalListings = JSON.parse(JSON.stringify(this.rentalListings));
+            
             // Set up admin interface
             this.addAdminControls();
             this.addEventListeners();
             
             this.isInitialized = true;
             console.log('✅ Rentals Admin Manager initialized successfully');
+            
+            // Make this instance globally available for version control integration
+            window.rentalsAdminManager = this;
         } catch (error) {
             console.error('❌ Failed to initialize Rentals Admin Manager:', error);
             throw error;
@@ -504,6 +510,63 @@ class RentalsAdminManager {
     }
 
     /**
+     * Get pending changes in format expected by version control system
+     */
+    getPendingChangesForVersionControl() {
+        if (!this.hasUnsavedChanges) {
+            return null;
+        }
+        
+        console.log('📋 Providing pending rental listing changes to version control:');
+        console.log(`   - Modified: ${this.pendingChanges.modified.size} listings`);
+        console.log(`   - Added: ${this.pendingChanges.added.length} listings`);
+        console.log(`   - Deleted: ${this.pendingChanges.deleted.size} listings`);
+        
+        return {
+            added: [...this.pendingChanges.added],
+            modified: this.pendingChanges.modified instanceof Map ? 
+                Object.fromEntries(this.pendingChanges.modified) : 
+                this.pendingChanges.modified,
+            deleted: [...this.pendingChanges.deleted]
+        };
+    }
+
+    /**
+     * Clear pending changes
+     */
+    clearPendingChanges() {
+        this.pendingChanges.modified.clear();
+        this.pendingChanges.added = [];
+        this.pendingChanges.deleted.clear();
+        this.hasUnsavedChanges = false;
+        
+        // Remove visual indicators
+        document.querySelectorAll('.listing-card').forEach(card => {
+            card.classList.remove('pending-changes');
+        });
+        
+        console.log('🧹 Cleared all pending rental listing changes');
+    }
+
+    /**
+     * Update listing pending indicator
+     */
+    updateListingPendingIndicator(listingId) {
+        const listingElement = document.querySelector(`[data-listing-id="${listingId}"]`);
+        if (!listingElement) return;
+        
+        const hasChanges = this.pendingChanges.modified.has(listingId) || 
+                          this.pendingChanges.deleted.has(listingId) ||
+                          this.pendingChanges.added.some(l => l.id === listingId);
+        
+        if (hasChanges) {
+            listingElement.classList.add('pending-changes');
+        } else {
+            listingElement.classList.remove('pending-changes');
+        }
+    }
+
+    /**
      * Open image selector for listing
      */
     openImageSelector(listingId) {
@@ -511,11 +574,21 @@ class RentalsAdminManager {
         console.log(`Opening image selector for listing: ${listingId}`);
         
         // Use the existing image manager if available
-        if (window.adminImageManager && typeof window.adminImageManager.openImageBrowser === 'function') {
-            window.adminImageManager.openImageBrowser((selectedImage) => {
-                this.assignImageToListing(listingId, selectedImage);
+        if (window.adminImageManager && typeof window.adminImageManager.showImageBrowser === 'function') {
+            window.adminImageManager.showImageBrowser(({ publicUrl, signedUrl, filename }) => {
+                console.log('✅ Image selected from global browser:', { publicUrl, signedUrl, filename });
+                this.assignImageToListing(listingId, { 
+                    url: publicUrl, 
+                    signedUrl: signedUrl, 
+                    fileName: filename,
+                    filePath: filename
+                });
             });
         } else {
+            console.error('❌ Admin Image Manager not available:', {
+                adminImageManager: !!window.adminImageManager,
+                showImageBrowser: window.adminImageManager && typeof window.adminImageManager.showImageBrowser
+            });
             alert('Image manager not available. Please ensure the admin image manager is loaded.');
         }
     }
@@ -524,24 +597,40 @@ class RentalsAdminManager {
      * Assign image to listing
      */
     async assignImageToListing(listingId, imageData) {
-        console.log(`Assigning image to listing ${listingId}:`, imageData);
+        console.log(`🖼️ Assigning image to listing ${listingId}:`, imageData);
         
         const listing = this.rentalListings.find(l => l.id === listingId);
-        if (!listing) return;
+        if (!listing) {
+            console.error('❌ Listing not found for assignment.');
+            return;
+        }
+        
+        // Extract bucket path from public URL (similar to about-admin.js)
+        // Example publicUrl: https://[project].supabase.co/storage/v1/object/public/wolf-property-images/images/property1.jpg
+        // We need to save the path: "images/property1.jpg"
+        const urlParts = new URL(imageData.url);
+        const bucketPath = urlParts.pathname.split('/wolf-property-images/')[1];
+        
+        console.log(`  - Listing ID: ${listingId}`);
+        console.log(`  - Filename: ${imageData.fileName}`);
+        console.log(`  - Public URL (to save): ${imageData.url}`);
+        console.log(`  - Signed URL (for display): ${imageData.signedUrl}`);
+        console.log(`  - Extracted Bucket Path: ${bucketPath}`);
         
         // Update listing with new image
         listing.primary_image_url = imageData.url;
-        listing.primary_image_filename = imageData.fileName || imageData.filePath;
+        listing.primary_image_filename = bucketPath; // Save the bucket path, not just filename
         
         // Track changes
         this.trackListingChange(listingId, 'primary_image_url', imageData.url);
-        this.trackListingChange(listingId, 'primary_image_filename', imageData.fileName || imageData.filePath);
+        this.trackListingChange(listingId, 'primary_image_filename', bucketPath);
         
-        // Update the image display
+        // Update the image display with signed URL for immediate display
         const listingElement = document.querySelector(`[data-listing-id="${listingId}"]`);
         const imageElement = listingElement.querySelector('.listing-image img');
         if (imageElement) {
-            imageElement.src = imageData.url;
+            imageElement.src = imageData.signedUrl || imageData.url;
+            console.log('✅ Image display updated');
         }
     }
 
@@ -689,6 +778,74 @@ class RentalsAdminManager {
                     timestamp: new Date().toISOString()
                 }
             );
+        }
+    }
+
+    /**
+     * Save all pending changes to database (called by universal save button)
+     */
+    async saveAllChanges() {
+        if (!this.hasUnsavedChanges) {
+            console.log('No rental listing changes to save');
+            return;
+        }
+
+        console.log('🏠 Saving all pending rental listing changes...');
+        
+        try {
+            // Save modified listings
+            for (const [listingId, listingChanges] of this.pendingChanges.modified) {
+                const listing = this.rentalListings.find(l => l.id === listingId);
+                if (listing) {
+                    // Apply all changes to the listing
+                    Object.assign(listing, listingChanges);
+                    
+                    // Save to database
+                    const { error } = await this.dbService.saveRentalListing(listing);
+                    if (error) {
+                        throw new Error(`Failed to save listing ${listing.title}: ${error}`);
+                    }
+                }
+            }
+
+            // Save new listings (convert temp IDs to real IDs)
+            const newListingsWithRealIds = [];
+            for (const newListing of this.pendingChanges.added) {
+                // Remove temporary fields before saving
+                const { id: tempId, isNew, ...listingToSave } = newListing;
+
+                const { rentalListing, error } = await this.dbService.saveRentalListing(listingToSave);
+                if (error) {
+                    throw new Error(`Failed to save new listing: ${error}`);
+                }
+
+                // Keep track of the mapping from temp ID to the newly saved listing
+                newListingsWithRealIds.push({ tempId, realListing: rentalListing });
+            }
+
+            // Update local data: remove temp listings and add real ones
+            this.rentalListings = this.rentalListings.filter(l => !l.id.startsWith('temp_'));
+            newListingsWithRealIds.forEach(({ realListing }) => {
+                this.rentalListings.push(realListing);
+            });
+
+            // Handle deleted listings (soft delete)
+            for (const listingId of this.pendingChanges.deleted) {
+                const { error } = await this.dbService.deleteRentalListing(listingId);
+                if (error) {
+                    throw new Error(`Failed to delete listing: ${error}`);
+                }
+            }
+
+            // Clear pending changes and re-render UI
+            this.clearPendingChanges();
+            await this.renderRentalListings();
+
+            console.log('✅ All rental listing changes saved successfully');
+
+        } catch (error) {
+            console.error('❌ Failed to save rental listing changes:', error);
+            throw error; // Re-throw so universal save button can handle the error
         }
     }
 

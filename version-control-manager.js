@@ -146,7 +146,7 @@ class OptimizedVersionControlManager {
      * Save all changes as a new version (GitHub-style)
      * CRITICAL: Saves the CURRENT state as version checkpoint, then applies changes
      */
-    async saveChangesGitHubStyle(description = '', pendingTeamChanges = null) {
+    async saveChangesGitHubStyle(description = '', pendingTeamChanges = null, pendingRentalChanges = null) {
         console.log('💾 Saving changes with GitHub-style version control...');
 
         try {
@@ -165,12 +165,13 @@ class OptimizedVersionControlManager {
             // Check if we have any changes to save
             const hasContentChanges = contentChanges.length > 0;
             const hasTeamChanges = pendingTeamChanges && Object.keys(pendingTeamChanges).length > 0;
+            const hasRentalChanges = pendingRentalChanges && Object.keys(pendingRentalChanges).length > 0;
             
-            if (!hasContentChanges && !hasTeamChanges) {
+            if (!hasContentChanges && !hasTeamChanges && !hasRentalChanges) {
                 return { success: true, message: 'No changes to save' };
             }
 
-            console.log(`📋 Found ${contentChanges.length} content changes and ${hasTeamChanges ? 'team member' : 'no team'} changes`);
+            console.log(`📋 Found ${contentChanges.length} content changes, ${hasTeamChanges ? 'team member' : 'no team'} changes, and ${hasRentalChanges ? 'rental listing' : 'no rental'} changes`);
 
             // **STEP 2: Generate version number**
             const versionNumber = await this.getNextVersionNumber();
@@ -180,7 +181,7 @@ class OptimizedVersionControlManager {
             await this.saveContentStateAsVersion(
                 currentContentState, 
                 versionNumber, 
-                description || this.generateAutoDescription(contentChanges, pendingTeamChanges)
+                description || this.generateAutoDescription(contentChanges, pendingTeamChanges, pendingRentalChanges)
             );
 
             console.log(`📝 Version ${versionNumber} checkpoint created with CURRENT state (before changes)`);
@@ -200,6 +201,13 @@ class OptimizedVersionControlManager {
                 console.log('✅ Applying team member changes to database...');
                 await this.applyTeamChangesToDatabase(pendingTeamChanges);
                 totalChanges += Object.keys(pendingTeamChanges).length;
+            }
+            
+            // Apply rental listing changes if any
+            if (hasRentalChanges) {
+                console.log('✅ Applying rental listing changes to database...');
+                await this.applyRentalChangesToDatabase(pendingRentalChanges);
+                totalChanges += Object.keys(pendingRentalChanges).length;
             }
 
             // **STEP 5: Update version tracking**
@@ -227,7 +235,7 @@ class OptimizedVersionControlManager {
             
             this.triggerEvent('versionSaved', { 
                 version: versionNumber, 
-                description: description || this.generateAutoDescription(contentChanges, pendingTeamChanges),
+                description: description || this.generateAutoDescription(contentChanges, pendingTeamChanges, pendingRentalChanges),
                 changeCount: totalChanges 
             });
 
@@ -554,6 +562,12 @@ class OptimizedVersionControlManager {
             // Refresh team members if on about page to sync with any team member changes
             if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
                 await window.aboutAdminManager.loadTeamMembersFromDatabase();
+            }
+            
+            // Refresh rental listings if on rentals page to sync with any rental listing changes
+            if (window.rentalsAdminManager && window.rentalsAdminManager.loadRentalListingsFromDatabase) {
+                await window.rentalsAdminManager.loadRentalListingsFromDatabase();
+                await window.rentalsAdminManager.renderRentalListings();
             }
 
             const restoreTime = Date.now() - startTime;
@@ -1362,7 +1376,7 @@ class OptimizedVersionControlManager {
         }
     }
 
-    generateAutoDescription(contentChanges = [], teamChanges = null) {
+    generateAutoDescription(contentChanges = [], teamChanges = null, rentalChanges = null) {
         const parts = [];
         
         // Analyze content changes
@@ -1386,6 +1400,20 @@ class OptimizedVersionControlManager {
             if (teamChanges.deleted) teamCount += teamChanges.deleted.length;
             
             if (teamCount > 0) parts.push(`${teamCount} team member changes`);
+        }
+        
+        // Analyze rental listing changes
+        if (rentalChanges && Object.keys(rentalChanges).length > 0) {
+            let rentalCount = 0;
+            if (rentalChanges.added) rentalCount += rentalChanges.added.length;
+            if (rentalChanges.modified) {
+                rentalCount += rentalChanges.modified instanceof Map ? 
+                    rentalChanges.modified.size : 
+                    Object.keys(rentalChanges.modified).length;
+            }
+            if (rentalChanges.deleted) rentalCount += rentalChanges.deleted.length;
+            
+            if (rentalCount > 0) parts.push(`${rentalCount} rental listing changes`);
         }
         
         if (parts.length === 0) {
@@ -1564,6 +1592,76 @@ class OptimizedVersionControlManager {
             
         } catch (error) {
             console.error('❌ Error applying team member changes:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Apply rental listing changes directly to database (GitHub-style)
+     */
+    async applyRentalChangesToDatabase(pendingRentalChanges) {
+        console.log('🏠 Applying rental listing changes to database...');
+        
+        try {
+            // pendingRentalChanges should be an object with the structure:
+            // { added: [...], modified: Map/Object, deleted: [...] }
+            
+            if (pendingRentalChanges.added && pendingRentalChanges.added.length > 0) {
+                console.log(`➕ Adding ${pendingRentalChanges.added.length} new rental listings...`);
+                for (const newListing of pendingRentalChanges.added) {
+                    // Remove temporary fields before saving
+                    const { id: tempId, isNew, ...listingToSave } = newListing;
+                    const { error } = await this.dbService.saveRentalListing(listingToSave);
+                    if (error) {
+                        console.error(`❌ Error adding rental listing ${newListing.title}:`, error);
+                    } else {
+                        console.log(`✅ Added rental listing: ${newListing.title}`);
+                    }
+                }
+            }
+            
+            if (pendingRentalChanges.modified) {
+                const modifiedEntries = pendingRentalChanges.modified instanceof Map ? 
+                    Array.from(pendingRentalChanges.modified.entries()) :
+                    Object.entries(pendingRentalChanges.modified);
+                    
+                console.log(`🔄 Updating ${modifiedEntries.length} rental listings...`);
+                for (const [listingId, changes] of modifiedEntries) {
+                    // Get the full listing data and apply changes
+                    const { data: existingListing } = await this.dbService.supabase
+                        .from('rental_listings')
+                        .select('*')
+                        .eq('id', listingId)
+                        .single();
+                        
+                    if (existingListing) {
+                        const updatedListing = { ...existingListing, ...changes };
+                        const { error } = await this.dbService.saveRentalListing(updatedListing);
+                        if (error) {
+                            console.error(`❌ Error updating rental listing ${listingId}:`, error);
+                        } else {
+                            console.log(`✅ Updated rental listing: ${updatedListing.title}`);
+                        }
+                    }
+                }
+            }
+            
+            if (pendingRentalChanges.deleted && pendingRentalChanges.deleted.length > 0) {
+                console.log(`🗑️ Deleting ${pendingRentalChanges.deleted.length} rental listings...`);
+                for (const listingId of pendingRentalChanges.deleted) {
+                    const { error } = await this.dbService.deleteRentalListing(listingId);
+                    if (error) {
+                        console.error(`❌ Error deleting rental listing ${listingId}:`, error);
+                    } else {
+                        console.log(`✅ Deleted rental listing: ${listingId}`);
+                    }
+                }
+            }
+            
+            console.log('✅ All rental listing changes applied successfully');
+            
+        } catch (error) {
+            console.error('❌ Failed to apply rental listing changes:', error);
             throw error;
         }
     }

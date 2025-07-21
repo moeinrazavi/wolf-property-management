@@ -302,8 +302,15 @@ try {
         pendingTeamChanges = window.aboutAdminManager.getPendingChangesForVersionControl();
     }
     
-    // 4. Save changes with GitHub-style logic (version control handles everything)
-    const result = await this.versionManager.saveChangesGitHubStyle(description, pendingTeamChanges);
+    // 4. Handle rental listing changes with GitHub-style approach
+    let pendingRentalChanges = null;
+    if (window.rentalsAdminManager && window.rentalsAdminManager.hasUnsavedChanges) {
+        console.log('🏠 Getting pending rental listing changes for version control...');
+        pendingRentalChanges = window.rentalsAdminManager.getPendingChangesForVersionControl();
+    }
+    
+    // 5. Save changes with GitHub-style logic (version control handles everything)
+    const result = await this.versionManager.saveChangesGitHubStyle(description, pendingTeamChanges, pendingRentalChanges);
     
             
             if (result.success) {
@@ -318,6 +325,14 @@ try {
                     window.aboutAdminManager.clearPendingChanges();
                     // Refresh to show the applied changes
                     await window.aboutAdminManager.loadTeamMembersFromDatabase();
+                }
+                
+                // Clear rental manager pending changes since version control handled them
+                if (window.rentalsAdminManager && pendingRentalChanges) {
+                    console.log('🔄 Clearing rental manager pending changes...');
+                    window.rentalsAdminManager.clearPendingChanges();
+                    // Refresh to show the applied changes
+                    await window.rentalsAdminManager.loadRentalListingsFromDatabase();
                 }
                 
             } else {

@@ -3810,4 +3810,267 @@ body.admin-mode .team-member-image img:hover {
     }
 }
 
- 
+/* ===========================
+   PROFESSIONAL SVG ICONS WITH REACT-STYLE FEATURES
+   =========================== */
+
+/* Base SVG icon styling */
+.value-icon {
+    position: relative;
+    overflow: visible;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.icon-svg {
+    width: 50px;
+    height: 50px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+    position: relative;
+    z-index: 2;
+}
+
+/* Professional Excellence Icon (Trophy/Star) */
+.value-icon.professional-excellence {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.value-icon.professional-excellence .icon-svg {
+    color: #f59e0b;
+}
+
+.value-card:hover .value-icon.professional-excellence .icon-svg {
+    color: #ffffff;
+    transform: scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 6px 20px rgba(245, 158, 11, 0.4));
+}
+
+/* Local Expertise Icon (Location Pin) */
+.value-icon.local-expertise {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.value-icon.local-expertise .icon-svg {
+    color: #3b82f6;
+}
+
+.value-card:hover .value-icon.local-expertise .icon-svg {
+    color: #ffffff;
+    transform: scale(1.15) translateY(-2px);
+    filter: drop-shadow(0 6px 20px rgba(59, 130, 246, 0.4));
+    animation: locationPulse 2s ease-in-out infinite;
+}
+
+/* Client Focus Icon (Handshake/Partnership) */
+.value-icon.client-focus {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.value-icon.client-focus .icon-svg {
+    color: #10b981;
+}
+
+.value-card:hover .value-icon.client-focus .icon-svg {
+    color: #ffffff;
+    transform: scale(1.15);
+    filter: drop-shadow(0 6px 20px rgba(16, 185, 129, 0.4));
+    animation: handshakeBounce 1.5s ease-in-out infinite;
+}
+
+/* Icon glow effect */
+.icon-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+}
+
+.value-icon.professional-excellence .icon-glow {
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+}
+
+.value-icon.local-expertise .icon-glow {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+}
+
+.value-icon.client-focus .icon-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
+}
+
+.value-card:hover .icon-glow {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* React-style icon animations */
+@keyframes locationPulse {
+    0%, 100% { 
+        transform: scale(1.15) translateY(-2px); 
+    }
+    50% { 
+        transform: scale(1.2) translateY(-5px); 
+    }
+}
+
+@keyframes handshakeBounce {
+    0%, 100% { 
+        transform: scale(1.15) translateX(0); 
+    }
+    25% { 
+        transform: scale(1.18) translateX(-1px); 
+    }
+    75% { 
+        transform: scale(1.18) translateX(1px); 
+    }
+}
+
+/* Enhanced value card hover effects */
+.value-card:hover .value-icon {
+    transform: translateY(-8px);
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.15),
+        0 8px 16px rgba(0, 0, 0, 0.1),
+        inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Professional icon states */
+.value-icon.professional-excellence:hover {
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+}
+
+.value-icon.local-expertise:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
+.value-icon.client-focus:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+/* SVG path animations on hover */
+.value-card:hover .icon-svg path,
+.value-card:hover .icon-svg circle {
+    animation: pathDraw 1.5s ease-in-out;
+}
+
+@keyframes pathDraw {
+    0% { 
+        stroke-dasharray: 200;
+        stroke-dashoffset: 200;
+    }
+    100% { 
+        stroke-dasharray: 200;
+        stroke-dashoffset: 0;
+    }
+}
+
+/* Professional card interactions */
+.value-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.value-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.8s ease;
+    z-index: 1;
+}
+
+.value-card:hover::before {
+    left: 100%;
+}
+
+/* Enhanced responsive design for icons */
+@media (max-width: 768px) {
+    .icon-svg {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .value-card:hover .icon-svg {
+        transform: scale(1.1);
+    }
+    
+    .icon-glow {
+        width: 55px;
+        height: 55px;
+    }
+}
+
+@media (max-width: 480px) {
+    .icon-svg {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .value-card:hover .icon-svg {
+        transform: scale(1.05);
+    }
+    
+    .icon-glow {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .value-card:hover .value-icon {
+        transform: translateY(-4px);
+    }
+}
+
+/* Loading skeleton for icons (React-style) */
+@keyframes iconSkeleton {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.value-icon.loading {
+    animation: iconSkeleton 1.5s ease-in-out infinite;
+}
+
+/* Professional icon focus states (accessibility) */
+.value-card:focus-within .value-icon {
+    outline: 3px solid rgba(59, 130, 246, 0.5);
+    outline-offset: 4px;
+    border-radius: 50%;
+}
+
+/* Smooth icon entrance animation */
+.value-icon {
+    animation: iconEnter 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes iconEnter {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Stagger animation delays for multiple icons */
+.value-card:nth-child(1) .value-icon {
+    animation-delay: 0.1s;
+}
+
+.value-card:nth-child(2) .value-icon {
+    animation-delay: 0.2s;
+}
+
+.value-card:nth-child(3) .value-icon {
+    animation-delay: 0.3s;
+} 

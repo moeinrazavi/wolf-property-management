@@ -9,25 +9,52 @@
     <link rel="stylesheet" href="optimized-version-control-styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="logo">
-                <img src="https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/wolf-logo.png" alt="Wolf Property Management Logo" class="logo-img">
+    <header class="modern-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <img src="https://srpspzgemnfxkqalgjmz.supabase.co/storage/v1/object/public/wolf-property-images/images/wolf-logo.png" alt="Wolf Property Management Logo" class="logo-img">
+                    <div class="logo-text">
+                        <span class="brand-name">Wolf Property</span>
+                        <span class="brand-tagline">Management</span>
+                    </div>
+                </div>
             </div>
-            <nav>
-                <ul>
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#rentals">Available Rentals</a></li>
-                    <li><a href="#services">Management Services</a></li>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <li><a href="#search" class="search-icon">🔍</a></li>
-                    <li><a href="#" id="admin-login-btn" class="admin-login-btn">Admin</a></li>
+            
+            <nav class="main-navigation">
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="#home" class="nav-link active">Home</a></li>
+                    <li class="nav-item"><a href="#rentals" class="nav-link">Available Rentals</a></li>
+                    <li class="nav-item"><a href="#services" class="nav-link">Management Services</a></li>
+                    <li class="nav-item"><a href="about.html" class="nav-link">About</a></li>
+                    <li class="nav-item"><a href="#contact" class="nav-link">Contact</a></li>
                 </ul>
             </nav>
+            
+            <div class="header-actions">
+                <button class="search-btn" aria-label="Search">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button id="admin-login-btn" class="admin-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Admin</span>
+                </button>
+                
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -169,6 +196,136 @@
         </div>
     </section>
 
+    <!-- Contact Information Section -->
+    <section id="contact" class="contact-section animate-on-scroll">
+        <div class="container">
+            <div class="section-header">
+                <h2>Location and Contact Information</h2>
+                <div class="section-divider"></div>
+            </div>
+            
+            <div class="contact-content">
+                <div class="contact-info-grid">
+                    <!-- Office Location -->
+                    <div class="contact-info-card">
+                        <div class="contact-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <h4>Our Office Location</h4>
+                        <div class="contact-details">
+                            <p><strong>200 Riverbend Dr</strong></p>
+                            <p>Georgetown, TX 78628</p>
+                            <a href="https://maps.google.com/?q=200+Riverbend+Dr,+Georgetown,+TX+78628" target="_blank" class="map-link">
+                                View Larger Map
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Phone Information -->
+                    <div class="contact-info-card">
+                        <div class="contact-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h4>Our Phone Number</h4>
+                        <div class="contact-details">
+                            <a href="tel:512-868-2093" class="phone-link">512-868-2093</a>
+                            <p>Call us for immediate assistance</p>
+                        </div>
+                    </div>
+
+                    <!-- Email Information -->
+                    <div class="contact-info-card">
+                        <div class="contact-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h4>Our Email Address</h4>
+                        <div class="contact-details">
+                            <a href="mailto:Office@WolfPropMgmt.com" class="email-link">Office@WolfPropMgmt.com</a>
+                            <p>Send us a message anytime</p>
+                        </div>
+                    </div>
+
+                    <!-- Business Hours -->
+                    <div class="contact-info-card business-hours-card">
+                        <div class="contact-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h4>Business Hours</h4>
+                        <div class="business-hours">
+                            <div class="hours-row">
+                                <span class="day">Mon</span>
+                                <span class="time">8:00 AM – 5:00 PM</span>
+                            </div>
+                            <div class="hours-row">
+                                <span class="day">Tue</span>
+                                <span class="time">8:00 AM – 5:00 PM</span>
+                            </div>
+                            <div class="hours-row">
+                                <span class="day">Wed</span>
+                                <span class="time">8:00 AM – 5:00 PM</span>
+                            </div>
+                            <div class="hours-row">
+                                <span class="day">Thu</span>
+                                <span class="time">8:00 AM – 5:00 PM</span>
+                            </div>
+                            <div class="hours-row">
+                                <span class="day">Fri</span>
+                                <span class="time">By appointment</span>
+                            </div>
+                            <div class="hours-row weekend">
+                                <span class="day">Sat</span>
+                                <span class="time">Closed</span>
+                            </div>
+                            <div class="hours-row weekend">
+                                <span class="day">Sun</span>
+                                <span class="time">Closed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Map -->
+                    <div class="contact-map-card">
+                        <div class="map-header">
+                            <h4>Find Us on the Map</h4>
+                            <p>200 Riverbend Dr, Georgetown, TX 78628</p>
+                        </div>
+                        <div class="map-container">
+                            <iframe 
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3440.7985282892895!2d-97.69420508489066!3d30.634408781670098!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8644d2c0b8d1e8e9%3A0x4e4b1b4a1b4b4b4b!2s200%20Riverbend%20Dr%2C%20Georgetown%2C%20TX%2078628!5e0!3m2!1sen!2sus!4v1647362542845!5m2!1sen!2sus"
+                                width="100%" 
+                                height="250" 
+                                style="border:0;" 
+                                allowfullscreen="" 
+                                loading="lazy" 
+                                referrerpolicy="no-referrer-when-downgrade"
+                                title="Wolf Property Management Office Location">
+                            </iframe>
+                        </div>
+                        <div class="map-actions">
+                            <a href="https://maps.google.com/?q=200+Riverbend+Dr,+Georgetown,+TX+78628" target="_blank" class="directions-btn">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <polygon points="3,11 22,2 13,21 11,13 3,11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Get Directions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <footer class="animate-on-scroll">
         <div class="container">
             <div class="footer-content">
@@ -200,6 +357,7 @@
     <script type="module" src="test-database.js"></script>
     <script type="module" src="debug-supabase.js"></script>
     <script src="debug-optimized-version-control.js"></script>
+    <script src="modern-navigation.js"></script>
 
     <!-- Admin Login Modal -->
     <div id="admin-modal" class="admin-modal">
@@ -228,19 +386,11 @@
         </div>
         <div class="admin-controls-content">
             <p>Click on any text to edit. Press Enter to save or Escape to cancel.</p>
+            
+
         </div>
     </div>
 
-    <!-- Save Changes Modal -->
-    <div id="save-modal" class="save-modal">
-        <div class="save-modal-content">
-            <h3>Save Changes</h3>
-            <p>Do you want to save your changes?</p>
-            <div class="save-modal-buttons">
-                <button id="save-confirm" class="btn btn-primary">Save</button>
-                <button id="save-cancel" class="btn btn-secondary">Cancel</button>
-            </div>
-        </div>
-    </div>
+
 </body>
 </html> 

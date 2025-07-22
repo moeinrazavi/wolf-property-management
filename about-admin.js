@@ -37,9 +37,17 @@ class AboutAdminManager {
             return;
         }
         
+        // Prevent concurrent initialization
+        if (this.isLoading) {
+            console.log('⚠️ About Admin Manager is currently loading, skipping...');
+            return;
+        }
+        
         console.log('📋 Initializing About Admin Manager...');
         
         try {
+            this.isLoading = true;
+            
             // Initialize database table if needed
             await this.initializeDatabase();
             
@@ -52,7 +60,13 @@ class AboutAdminManager {
             }
             
             // Set up admin interface
-            this.addAdminControls();
+            try {
+                await this.addAdminControls();
+                console.log('✅ Admin controls setup completed');
+            } catch (error) {
+                console.error('❌ Failed to add admin controls:', error);
+                // Continue initialization even if admin controls fail
+            }
             this.addEventListeners();
             
             this.isInitialized = true;
@@ -60,6 +74,8 @@ class AboutAdminManager {
         } catch (error) {
             console.error('❌ Failed to initialize About Admin Manager:', error);
             throw error;
+        } finally {
+            this.isLoading = false;
         }
     }
 
@@ -170,9 +186,30 @@ class AboutAdminManager {
             return;
         }
         
-        // Remove existing team members
-        const existingMembers = teamSection.querySelectorAll('.team-member');
-        existingMembers.forEach(member => member.remove());
+        // IMPROVED: More thorough clearing of existing team members
+        // First try the specific selector
+        let existingMembers = teamSection.querySelectorAll('.team-member');
+        if (existingMembers.length === 0) {
+            // Fallback: look for any elements with data-member-id attribute
+            existingMembers = teamSection.querySelectorAll('[data-member-id]');
+        }
+        
+        console.log(`🧹 Removing ${existingMembers.length} existing team member elements`);
+        existingMembers.forEach(member => {
+            // Get the parent team-member div if we're looking at a child element
+            const teamMemberDiv = member.closest('.team-member') || member;
+            teamMemberDiv.remove();
+        });
+        
+        // Double-check: ensure no team members remain
+        const remainingMembers = teamSection.querySelectorAll('.team-member, [data-member-id]');
+        if (remainingMembers.length > 0) {
+            console.warn(`⚠️ ${remainingMembers.length} team member elements still found after cleanup, force removing...`);
+            remainingMembers.forEach(member => {
+                const teamMemberDiv = member.closest('.team-member') || member;
+                teamMemberDiv.remove();
+            });
+        }
         
         // Render each team member
         for (const member of this.teamMembers) {
@@ -305,43 +342,67 @@ class AboutAdminManager {
     }
 
     /**
-     * Add admin controls specific to about page
+     * Add admin controls specific to about page (with retry mechanism)
      */
-    addAdminControls() {
-        const adminControls = document.querySelector('.admin-controls-content');
-        if (!adminControls) {
-            console.warn('❌ Admin controls not found');
-            return;
-        }
+    async addAdminControls() {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 20; // Try for up to 4 seconds (20 * 200ms)
+            
+            const tryAddControls = () => {
+                attempts++;
+                
+                const adminControls = document.querySelector('.admin-controls-content');
+                if (!adminControls) {
+                    if (attempts < maxAttempts) {
+                        console.log(`⏳ Waiting for admin controls (attempt ${attempts}/${maxAttempts})...`);
+                        setTimeout(tryAddControls, 200); // Wait 200ms before trying again
+                        return;
+                    } else {
+                        console.warn('❌ Admin controls not found after maximum attempts');
+                        reject(new Error('Admin controls not found'));
+                        return;
+                    }
+                }
 
-        // Check if controls already exist
-        if (document.getElementById('about-admin-controls')) {
-            console.log('⚠️ About admin controls already exist, skipping...');
-            return;
-        }
+                // Check if controls already exist
+                if (document.getElementById('about-admin-controls')) {
+                    console.log('⚠️ About admin controls already exist, skipping...');
+                    resolve();
+                    return;
+                }
 
-        const aboutControls = document.createElement('div');
-        aboutControls.id = 'about-admin-controls';
-        aboutControls.className = 'about-admin-controls';
-        aboutControls.innerHTML = `
-            <div class="about-admin-section">
-                <h4>👥 Team Management</h4>
-                <p style="color: rgba(255, 255, 255, 0.8); font-size: 14px; margin: 0 0 15px 0;">
-                    Click on team member images to assign from bucket. Click text to edit. Changes are held until you save.
-                </p>
-                <div class="about-admin-buttons">
-                    <button id="add-team-member-btn" class="btn btn-primary" style="background-color: #27ae60; margin-right: 10px;">
-                        ➕ Add Team Member
-                    </button>
-                    <!-- Save button removed - using universal version control save button -->
-                </div>
-                <div id="changes-status" style="margin-top: 10px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
-                    Changes are saved with version history for easy reverting
-                </div>
-            </div>
-        `;
+                const aboutControls = document.createElement('div');
+                aboutControls.id = 'about-admin-controls';
+                aboutControls.className = 'about-admin-controls';
+                aboutControls.innerHTML = `
+                    <div class="about-admin-section">
+                        <h4>👥 Team Management</h4>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 14px; margin: 0 0 15px 0;">
+                            Click on team member images to assign from bucket. Click text to edit. Changes are held until you save.
+                        </p>
+                        <div class="about-admin-buttons">
+                            <button id="add-team-member-btn" class="btn btn-primary" style="background-color: #27ae60; margin-right: 10px;">
+                                ➕ Add Team Member
+                            </button>
+                            <button id="cleanup-duplicates-btn" class="btn btn-secondary" style="background-color: #e74c3c; margin-right: 10px;">
+                                🧹 Fix Duplicates
+                            </button>
+                            <!-- Save button removed - using universal version control save button -->
+                        </div>
+                        <div id="changes-status" style="margin-top: 10px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+                            Changes are saved with version history for easy reverting
+                        </div>
+                    </div>
+                `;
 
-        adminControls.appendChild(aboutControls);
+                adminControls.appendChild(aboutControls);
+                console.log('✅ About admin controls added successfully');
+                resolve();
+            };
+            
+            tryAddControls();
+        });
     }
 
     /**
@@ -1138,6 +1199,26 @@ class AboutAdminManager {
             }
         });
 
+        // Cleanup duplicates button
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'cleanup-duplicates-btn') {
+                e.preventDefault();
+                if (confirm('This will remove duplicate team members from the database.\n\nProceed with cleanup?')) {
+                    this.cleanupDuplicateTeamMembers().then(result => {
+                        if (result && result.success) {
+                            alert(`✅ Cleanup completed!\n\nRemoved ${result.deactivatedCount} duplicate records.`);
+                        } else if (result && !result.success) {
+                            alert(`❌ Cleanup failed: ${result.error}`);
+                        } else {
+                            alert('✅ No duplicates found - database is clean!');
+                        }
+                    }).catch(error => {
+                        alert(`❌ Error during cleanup: ${error.message}`);
+                    });
+                }
+            }
+        });
+
         // Save functionality now handled by universal version control save button
 
         // Remove pending member button
@@ -1246,6 +1327,87 @@ class AboutAdminManager {
     }
 
     /**
+     * Clean up duplicate team members in database
+     */
+    async cleanupDuplicateTeamMembers() {
+        console.log('🧹 Starting cleanup of duplicate team members...');
+        
+        try {
+            // Get all active team members for this page
+            const { data: members, error } = await this.dbService.supabase
+                .from('team_members')
+                .select('id, name, updated_at')
+                .eq('page_name', 'about.html')
+                .eq('is_active', true)
+                .order('name, updated_at DESC');
+                
+            if (error) {
+                throw error;
+            }
+            
+            if (!members || members.length === 0) {
+                console.log('✅ No team members found.');
+                return;
+            }
+            
+            // Group by name to find duplicates
+            const memberGroups = {};
+            members.forEach(member => {
+                if (!memberGroups[member.name]) {
+                    memberGroups[member.name] = [];
+                }
+                memberGroups[member.name].push(member);
+            });
+            
+            // Find duplicates and keep only the most recent
+            const duplicateGroups = Object.entries(memberGroups).filter(([name, instances]) => instances.length > 1);
+            
+            if (duplicateGroups.length === 0) {
+                console.log('✅ No duplicates found! Database is clean.');
+                return;
+            }
+            
+            console.log(`⚠️ Found ${duplicateGroups.length} duplicate team member groups:`);
+            
+            let totalDeactivated = 0;
+            for (const [name, instances] of duplicateGroups) {
+                console.log(`   - ${name}: ${instances.length} instances`);
+                
+                // Keep the first one (most recent due to ordering) and deactivate the rest
+                const [keepInstance, ...duplicateInstances] = instances;
+                
+                for (const duplicate of duplicateInstances) {
+                    const { error: deactivateError } = await this.dbService.supabase
+                        .from('team_members')
+                        .update({ 
+                            is_active: false, 
+                            updated_at: new Date().toISOString() 
+                        })
+                        .eq('id', duplicate.id);
+                        
+                    if (deactivateError) {
+                        console.error(`❌ Error deactivating duplicate ${name}:`, deactivateError);
+                    } else {
+                        console.log(`✅ Deactivated duplicate ${name} (ID: ${duplicate.id})`);
+                        totalDeactivated++;
+                    }
+                }
+            }
+            
+            console.log(`✅ Cleanup completed! Deactivated ${totalDeactivated} duplicate records.`);
+            
+            // Reload team members to reflect changes
+            await this.loadTeamMembersFromDatabase();
+            
+            return { success: true, deactivatedCount: totalDeactivated };
+            
+        } catch (error) {
+            console.error('❌ Error during cleanup:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Clean up when leaving admin mode
      */
     cleanup() {
@@ -1286,14 +1448,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const observer = new MutationObserver((mutations) => {
+    let initializationPending = false;
+
+    // Observer for admin mode changes
+    const adminModeObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.type === 'attributes' && 
                 mutation.attributeName === 'class' && 
                 mutation.target === document.body) {
                 
                 if (document.body.classList.contains('admin-mode')) {
-                    aboutAdminManager.initialize();
+                    // Prevent duplicate initialization calls
+                    if (!initializationPending && !aboutAdminManager.isInitialized) {
+                        initializationPending = true;
+                        aboutAdminManager.initialize().finally(() => {
+                            initializationPending = false;
+                        });
+                    }
                 } else {
                     aboutAdminManager.cleanup();
                 }
@@ -1301,17 +1472,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    observer.observe(document.body, {
+    adminModeObserver.observe(document.body, {
         attributes: true,
         attributeFilter: ['class']
     });
 
-    // Initialize immediately if already in admin mode
+    // Backup observer for admin controls availability (in case of timing issues)
+    const adminControlsObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+                const adminControlsContent = document.querySelector('.admin-controls-content');
+                if (adminControlsContent && 
+                    document.body.classList.contains('admin-mode') && 
+                    !aboutAdminManager.isInitialized && 
+                    !initializationPending) {
+                    
+                    console.log('📋 Admin controls detected, initializing About Admin Manager...');
+                    initializationPending = true;
+                    aboutAdminManager.initialize().finally(() => {
+                        initializationPending = false;
+                    });
+                }
+            }
+        });
+    });
+
+    adminControlsObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    // Initialize immediately if already in admin mode (only once)
     if (document.body.classList.contains('admin-mode')) {
-        aboutAdminManager.initialize();
+        if (!initializationPending && !aboutAdminManager.isInitialized) {
+            initializationPending = true;
+            aboutAdminManager.initialize().finally(() => {
+                initializationPending = false;
+            });
+        }
     } else {
         // Load team members for non-admin users (only if not already loaded)
-        if (aboutAdminManager.teamMembers.length === 0) {
+        if (aboutAdminManager.teamMembers.length === 0 && !aboutAdminManager.isLoading) {
             aboutAdminManager.loadTeamMembersFromDatabase();
         }
     }

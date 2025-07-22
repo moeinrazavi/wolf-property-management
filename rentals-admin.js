@@ -581,8 +581,8 @@ class RentalsAdminManager {
                 e.preventDefault();
                 e.stopPropagation();
                 suggestionsContainer.style.display = 'none';
-                // Keep the current input value and save it
-                this.handleAddressUpdate(listingId, input);
+                // Focus back on input so user can continue editing or save manually
+                input.focus();
             });
             
             suggestionsContainer.appendChild(noResults);
@@ -610,34 +610,26 @@ class RentalsAdminManager {
                 suggestion.style.backgroundColor = 'white';
             });
             
-            // Handle selection
-            suggestion.addEventListener('click', (e) => {
-                e.preventDefault();
+            // Use mousedown to prevent the input's blur event from firing before we can handle the selection.
+            suggestion.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // Prevents input from losing focus.
                 e.stopPropagation();
                 
-                input.value = address.street;
+                input.value = address.display; // Update the input's value with the full address.
                 
-                // Update related fields
-                const listing = this.rentalListings.find(l => l.id === listingId);
-                if (listing && address.city && address.state && address.zipCode) {
-                    listing.city = address.city;
-                    listing.state = address.state;
-                    listing.zip_code = address.zipCode;
-                    listing.neighborhood = address.neighborhood || address.city;
-                    
-                    // Track these changes
-                    this.trackListingChange(listingId, 'city', address.city);
-                    this.trackListingChange(listingId, 'state', address.state);
-                    this.trackListingChange(listingId, 'zip_code', address.zipCode);
-                    this.trackListingChange(listingId, 'neighborhood', address.neighborhood || address.city);
-                    
-                    // Update display immediately
-                    this.updateDisplayElements(listingId);
-                }
-                
+                // Store the structured address data. This will be used by the 'blur' handler.
+                input._selectedAddressData = {
+                    street: address.street,
+                    city: address.city,
+                    state: address.state,
+                    zipCode: address.zipCode,
+                    neighborhood: address.neighborhood || address.city
+                };
+
+                suggestionsContainer.innerHTML = '';
                 suggestionsContainer.style.display = 'none';
-                
-                // Trigger save by calling the address update handler
+
+                // Manually trigger the save since we've prevented the blur.
                 this.handleAddressUpdate(listingId, input);
             });
             
@@ -677,9 +669,37 @@ class RentalsAdminManager {
      * Handle address update after editing
      */
     handleAddressUpdate(listingId, input) {
-        const newAddress = input.value.trim();
+        // If a suggestion was selected, its street component should be saved as the 'address'.
+        // The input's value will be the full display address, which we don't want in the 'address' field.
+        // For custom entry, the input's value is what we save.
+        const addressToSave = (input._selectedAddressData && input._selectedAddressData.street)
+            ? input._selectedAddressData.street
+            : input.value.trim();
         
-        this.updateListingField(listingId, 'address', newAddress);
+        this.updateListingField(listingId, 'address', addressToSave);
+        
+        // If there's stored address data from a suggestion selection, use it for other fields
+        if (input._selectedAddressData) {
+            const addressData = input._selectedAddressData;
+            const listing = this.rentalListings.find(l => l.id === listingId);
+            
+            if (listing && addressData.city && addressData.state && addressData.zipCode) {
+                listing.city = addressData.city;
+                listing.state = addressData.state;
+                listing.zip_code = addressData.zipCode;
+                listing.neighborhood = addressData.neighborhood;
+                
+                // Track these changes
+                this.trackListingChange(listingId, 'city', addressData.city);
+                this.trackListingChange(listingId, 'state', addressData.state);
+                this.trackListingChange(listingId, 'zip_code', addressData.zipCode);
+                this.trackListingChange(listingId, 'neighborhood', addressData.neighborhood);
+                
+                // Update display immediately. `updateListingField` above already called this,
+                // but we need to call it again to reflect city/state/zip changes.
+                this.updateDisplayElements(listingId);
+            }
+        }
         
         // Clean up event listeners
         if (input._hideHandler) {
@@ -895,7 +915,15 @@ class RentalsAdminManager {
         if (addressElement) {
             const mapLink = addressElement.querySelector('.map-link');
             const mapLinkHtml = mapLink ? mapLink.outerHTML : '<a href="#" class="map-link">📍 Map</a>';
-            addressElement.innerHTML = `${listing.address}, ${listing.city}, ${listing.state} ${listing.zip_code} ${mapLinkHtml}`;
+            
+            // Build address string with proper handling of empty values
+            let addressParts = [listing.address];
+            if (listing.city) addressParts.push(listing.city);
+            if (listing.state) addressParts.push(listing.state);
+            if (listing.zip_code) addressParts.push(listing.zip_code);
+            
+            const addressText = addressParts.join(', ');
+            addressElement.innerHTML = `${addressText} ${mapLinkHtml}`;
         }
 
         const availableDateElement = listingElement.querySelector('[data-field="available_date"]');

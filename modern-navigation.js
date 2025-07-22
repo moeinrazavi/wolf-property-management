@@ -186,6 +186,8 @@ class ModernNavigation {
                 link.classList.add('active');
             } else if (currentPath.includes('about.html') && href.includes('about.html')) {
                 link.classList.add('active');
+            } else if (currentPath.includes('contact.html') && href.includes('contact.html')) {
+                link.classList.add('active');
             }
         });
     }

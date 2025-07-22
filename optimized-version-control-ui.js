@@ -297,11 +297,12 @@ class OptimizedVersionControlUI {
                     `✅ Version ${result.version} saved in ${saveTime}ms! (${result.changeCount} changes)`
                 );
                 
-                // **CRITICAL FIX**: Refresh team members from database to show saved changes
-                if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
-                    console.log('🔄 Refreshing team members from database...');
-                    await window.aboutAdminManager.loadTeamMembersFromDatabase();
-                }
+                // DON'T refresh team members automatically - let about admin manager handle its own state
+                // This was causing infinite team member additions due to race conditions
+                // Removed: if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+                //     console.log('🔄 Refreshing team members from database...');
+                //     await window.aboutAdminManager.loadTeamMembersFromDatabase();
+                // }
                 
             } else {
                 throw new Error(result.error);
@@ -704,10 +705,11 @@ class OptimizedVersionControlUI {
             await window.loadContentFromDatabase();
         }
         
-        // Trigger team members refresh if on about page
-        if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
-            await window.aboutAdminManager.loadTeamMembersFromDatabase();
-        }
+        // DON'T trigger team members refresh - let about admin manager handle its own state
+        // This was causing infinite team member additions
+        // Removed: if (window.aboutAdminManager && window.aboutAdminManager.loadTeamMembersFromDatabase) {
+        //     await window.aboutAdminManager.loadTeamMembersFromDatabase();
+        // }
     }
 
     showSuccessMessage(message) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wolf Property Management</title>
+    <title>Available Rentals - Wolf Property Management</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="version-control-styles.css">
     <link rel="stylesheet" href="optimized-version-control-styles.css">
@@ -26,8 +26,8 @@
             
             <nav class="main-navigation">
                 <ul class="nav-menu">
-                    <li class="nav-item"><a href="#home" class="nav-link active">Home</a></li>
-                    <li class="nav-item"><a href="rentals.html" class="nav-link">Available Rentals</a></li>
+                    <li class="nav-item"><a href="index.html" class="nav-link">Home</a></li>
+                    <li class="nav-item"><a href="rentals.html" class="nav-link active">Available Rentals</a></li>
                     <li class="nav-item"><a href="#services" class="nav-link">Management Services</a></li>
                     <li class="nav-item"><a href="about.html" class="nav-link">About</a></li>
                     <li class="nav-item"><a href="#contact" class="nav-link">Contact</a></li>
@@ -58,139 +58,112 @@
         </div>
     </header>
 
-    <section class="hero" style="background-image: url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');">
-        <div class="hero-content">
-            <h1>Stop Looking and Start Living!</h1>
-            <div class="divider"></div>
-            <h2>GEORGETOWN'S PREMIER PROPERTY MANAGEMENT</h2>
-            <p>Locally owned and operated with multiple generations of real estate expertise</p>
-            <div class="hero-buttons">
-                <a href="rentals.html" class="btn btn-hero">Search Properties for Sale</a>
-                <a href="rentals.html" class="btn btn-hero">Search Properties for Lease</a>
+    <section class="rentals-hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Current Listings</h1>
+                <p class="hero-subtitle">Showing all available listings</p>
             </div>
         </div>
     </section>
 
-    <section class="find-your-edge animate-on-scroll">
+    <!-- Filters Section -->
+    <section class="filters-section">
         <div class="container">
-            <h2>Find Your Edge</h2>
-            <p>Wolf Property Management is a full-service, boutique-style property management company providing clients a broad spectrum of residential real estate services, including Property Management, Sales, and Leasing. We are passionate about Georgetown and practicing real estate in this amazing city.</p>
-            <p>Our boutique-style office cultivates a collaborative environment for our team. Shunning the traditional model, our team shares their knowledge and expertise of the Georgetown market, ensuring our clients superior representation and a true competitive edge.</p>
-        </div>
-    </section>
-
-    <section class="neighborhood-spotlights animate-on-scroll">
-        <div class="container">
-            <h2>GEORGETOWN NEIGHBORHOOD SPOTLIGHTS</h2>
-            <div class="spotlight-grid">
-                <div class="spotlight animate-on-scroll" style="background-image: url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80');">
-                    <h3>Downtown</h3>
-                    <h4>THE HEART OF GEORGETOWN</h4>
-                    <a href="#downtown" class="btn btn-outline">Search Properties</a>
+            <div class="filters-header">
+                <div class="filters-left">
+                    <label for="sort-select">SORT BY</label>
+                    <select id="sort-select" class="sort-dropdown">
+                        <option value="most-recent">Most Recent</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="bedrooms">Bedrooms</option>
+                        <option value="sqft">Square Footage</option>
+                    </select>
                 </div>
-                <div class="spotlight animate-on-scroll" style="background-image: url('https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=2070&q=80');">
-                    <h3>South Georgetown</h3>
-                    <h4>NOT YOUR TYPICAL SUBURB</h4>
-                    <a href="#south" class="btn btn-outline">Search Properties</a>
-                </div>
-                <div class="spotlight animate-on-scroll" style="background-image: url('https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');">
-                    <h3>West Georgetown</h3>
-                    <h4>A LUXURIOUS LANDSCAPE</h4>
-                    <a href="#west" class="btn btn-outline">Search Properties</a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="services animate-on-scroll">
-        <div class="container">
-            <h2>What are you looking for?</h2>
-            <div class="services-grid">
-                <div class="service-card animate-on-scroll">
-                    <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="Residential Management">
-                    <div class="service-card-content">
-                        <h3>Residential Management</h3>
-                        <p>Expert care for your home with comprehensive property management services.</p>
-                        <a href="#residential" class="btn">Learn More</a>
-                    </div>
-                </div>
-                <div class="service-card animate-on-scroll">
-                    <img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="Commercial Properties">
-                    <div class="service-card-content">
-                        <h3>Commercial Properties</h3>
-                        <p>Maximizing your investment with professional commercial property management.</p>
-                        <a href="#commercial" class="btn">Learn More</a>
-                    </div>
-                </div>
-                <div class="service-card animate-on-scroll">
-                    <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80" alt="HOA Management">
-                    <div class="service-card-content">
-                        <h3>HOA Management</h3>
-                        <p>Community-focused solutions for homeowners associations.</p>
-                        <a href="#hoa" class="btn">Learn More</a>
-                    </div>
+                <div class="filters-right">
+                    <button class="filter-btn" id="show-map-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        SHOW MAP
+                    </button>
+                    <button class="filter-btn" id="filter-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46 22,3" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        FILTER
+                    </button>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Service Categories Section -->
-    <section class="service-categories">
+    <!-- Rental Listings Section -->
+    <section class="rental-listings">
         <div class="container">
-            <h2 class="animate-on-scroll">Our Management Services</h2>
-            <div class="service-categories-grid">
-                <!-- Residential Category -->
-                <div class="category-card animate-on-scroll">
-                    <div class="category-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 3L4 9v12h16V9l-8-6zm6 16h-3v-6H9v6H6v-9l6-4.5 6 4.5v9z"/>
-                        </svg>
+            <div class="section-header">
+                <h2>Available Properties</h2>
+                <div class="section-divider"></div>
+            </div>
+            
+            <!-- Listings will be dynamically loaded here -->
+            <div class="listings-grid" id="listings-container">
+                <!-- Sample listing for reference - will be replaced by dynamic content -->
+                <div class="listing-card" data-listing-id="sample">
+                    <div class="listing-image">
+                        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Property Image">
+                        <div class="listing-badges">
+                            <span class="featured-badge">Featured</span>
+                        </div>
                     </div>
-                    <h3>Residential</h3>
-                    <ul class="category-features">
-                        <li>Single and Multi-Family</li>
-                        <li>Prompt Maintenance</li>
-                        <li>Make-Ready and Leasing Services</li>
-                        <li>Tenant Relations</li>
-                        <li>Property Inspections</li>
-                        <li>Bill Pay & Financial Reporting</li>
-                    </ul>
+                    <div class="listing-content">
+                        <div class="listing-header">
+                            <div class="listing-type">RENT</div>
+                            <div class="listing-price">$2,100</div>
+                        </div>
+                        <div class="listing-details">
+                            <div class="listing-size">
+                                <span class="sqft">2,806</span>
+                                <span class="label">SQUARE FEET</span>
+                            </div>
+                            <div class="listing-specs">
+                                <span class="beds">4 bd / 2.5 ba</span>
+                                <span class="label">BED / BATH</span>
+                            </div>
+                            <div class="listing-availability">
+                                <span class="available">8/5/25</span>
+                                <span class="label">AVAILABLE</span>
+                            </div>
+                        </div>
+                        <div class="listing-info">
+                            <h3 class="listing-title">148 Ammonite Ln - Jarrell</h3>
+                            <p class="listing-address">148 Ammonite Ln, Jarrell, TX 76537 
+                                <a href="#" class="map-link">📍 Map</a>
+                            </p>
+                            <div class="listing-description">
+                                <p>Spacious and versatile 4-bedroom, 2.5-bath home in Sonterra, Jarrell! This two-story residence boasts over 2,800 sq ft, offering a flexible floor plan to fit your lifestyle. Downstairs includes a large living room, a dedicated formal dining/office space, and a huge kitchen with granite countertops, tall cabinets, and pantry. The oversized laundry room includes extra shelving and storage. The ma...</p>
+                            </div>
+                            <div class="listing-features">
+                                <p><strong>Appliances:</strong> Dishwasher, Electric Range, Microwave</p>
+                                <p><strong>Pet Policy:</strong> Cats allowed, Small dogs allowed</p>
+                            </div>
+                            <div class="listing-actions">
+                                <button class="btn btn-primary view-details-btn">View Details</button>
+                                <button class="btn btn-secondary apply-btn">Apply Now</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Commercial Category -->
-                <div class="category-card animate-on-scroll">
-                    <div class="category-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/>
-                        </svg>
-                    </div>
-                    <h3>Commercial</h3>
-                    <ul class="category-features">
-                        <li>Bill Pay & Financial Reporting</li>
-                        <li>Lease-Type Determination</li>
-                        <li>Net Lease Calculations</li>
-                        <li>Property Financials</li>
-                        <li>Maintenance & Construction Services</li>
-                        <li>Leverage Our Vendor Relationships</li>
-                    </ul>
-                </div>
-
-                <!-- Associations Category -->
-                <div class="category-card animate-on-scroll">
-                    <div class="category-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
-                        </svg>
-                    </div>
-                    <h3>Associations</h3>
-                    <ul class="category-features">
-                        <li>Community Relations & Coordination</li>
-                        <li>Bill Pay & Financial Reporting</li>
-                        <li>Maintenance Services</li>
-                        <li>Vendor Relationships</li>
-                        <li>Board Meetings</li>
-                        <li>Budget, Audit, Tax Support</li>
-                    </ul>
+            <!-- No Listings Message (hidden by default) -->
+            <div class="no-listings" id="no-listings" style="display: none;">
+                <div class="no-listings-content">
+                    <h3>No listings found</h3>
+                    <p>Check back soon for new rental opportunities, or contact us for upcoming availability.</p>
+                    <a href="#contact" class="btn btn-primary">Contact Us</a>
                 </div>
             </div>
         </div>
@@ -293,40 +266,12 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Interactive Map -->
-                    <div class="contact-map-card">
-                        <div class="map-header">
-                            <h4>Find Us on the Map</h4>
-                            <p>200 Riverbend Dr, Georgetown, TX 78628</p>
-                        </div>
-                        <div class="map-container">
-                            <iframe 
-                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3440.7985282892895!2d-97.69420508489066!3d30.634408781670098!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8644d2c0b8d1e8e9%3A0x4e4b1b4a1b4b4b4b!2s200%20Riverbend%20Dr%2C%20Georgetown%2C%20TX%2078628!5e0!3m2!1sen!2sus!4v1647362542845!5m2!1sen!2sus"
-                                width="100%" 
-                                height="250" 
-                                style="border:0;" 
-                                allowfullscreen="" 
-                                loading="lazy" 
-                                referrerpolicy="no-referrer-when-downgrade"
-                                title="Wolf Property Management Office Location">
-                            </iframe>
-                        </div>
-                        <div class="map-actions">
-                            <a href="https://maps.google.com/?q=200+Riverbend+Dr,+Georgetown,+TX+78628" target="_blank" class="directions-btn">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <polygon points="3,11 22,2 13,21 11,13 3,11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                Get Directions
-                            </a>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <footer class="animate-on-scroll">
+    <footer>
         <div class="container">
             <div class="footer-content">
                 <div class="footer-info">
@@ -349,31 +294,57 @@
     </footer>
 
     <script type="module" src="script.js"></script>
-    <script type="module" src="debug-version-control.js"></script>
     <script type="module" src="admin-image-manager.js"></script>
-    <script type="module" src="test-image-manager.js"></script>
-    <script type="module" src="debug-bucket.js"></script>
-    <script type="module" src="emergency-fix.js"></script>
-    <script type="module" src="test-database.js"></script>
-    <script type="module" src="debug-supabase.js"></script>
-    <script src="debug-optimized-version-control.js"></script>
+    <script type="module" src="rentals-admin.js"></script>
     <script src="modern-navigation.js"></script>
 
     <!-- Admin Login Modal -->
     <div id="admin-modal" class="admin-modal">
         <div class="admin-modal-content">
-            <span class="admin-close">&times;</span>
-            <h2>Admin Login</h2>
+            <button class="admin-close" aria-label="Close login modal">&times;</button>
+            
+            <div class="admin-modal-header">
+                <h2>Admin Access</h2>
+                <p class="admin-modal-subtitle">Sign in to manage your property content</p>
+            </div>
+            
             <form id="admin-login-form">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="username">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="username" 
+                        name="username" 
+                        placeholder="admin@wolfpm.com"
+                        required 
+                        autocomplete="username"
+                    >
+                    <div class="error-message">Please enter a valid email address</div>
                 </div>
+                
                 <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Enter your password"
+                        required 
+                        autocomplete="current-password"
+                    >
+                    <div class="error-message">Password is required</div>
                 </div>
-                <button type="submit" class="btn btn-admin">Login</button>
+                
+                <button type="submit" class="btn btn-admin">
+                    <span class="btn-text">Sign In</span>
+                </button>
+                
+                <div class="security-notice">
+                    <p>
+                        <span class="icon">🔒</span>
+                        Your login is secured with enterprise-grade encryption
+                    </p>
+                </div>
             </form>
         </div>
     </div>
@@ -386,11 +357,8 @@
         </div>
         <div class="admin-controls-content">
             <p>Click on any text to edit. Press Enter to save or Escape to cancel.</p>
-            
-
         </div>
     </div>
-
 
 </body>
 </html> 

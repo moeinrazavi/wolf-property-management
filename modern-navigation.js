@@ -78,9 +78,6 @@ class ModernNavigation {
                 this.closeMobileMenu();
             }
         });
-
-        // Update active nav link based on current page
-        this.updateActiveNavLink();
     }
 
     handleInitialLoad() {
@@ -185,6 +182,8 @@ class ModernNavigation {
             if ((currentPath === '/' || currentPath.includes('index.html')) && 
                 (href === '#home' || href.includes('index.html'))) {
                 link.classList.add('active');
+            } else if (currentPath.includes('rentals.html') && href.includes('rentals.html')) {
+                link.classList.add('active');
             } else if (currentPath.includes('about.html') && href.includes('about.html')) {
                 link.classList.add('active');
             }
@@ -205,6 +204,12 @@ class ModernNavigation {
     }
 
     highlightNavOnScroll() {
+        // Only enable scroll highlighting on home/index page
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes('index.html') && currentPath !== '/') {
+            return; // Don't use scroll highlighting on other pages
+        }
+        
         // Add intersection observer for section highlighting
         const sections = document.querySelectorAll('section[id]');
         
@@ -267,7 +272,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupLogoInteraction();
     setupSearchButton();
     
-    // Enable section highlighting on scroll
+    // Set the correct active link for the current page (with small delay to ensure page is fully loaded)
+    setTimeout(() => {
+        navigation.updateActiveNavLink();
+    }, 50);
+    
+    // Enable section highlighting on scroll (only for home page)
     navigation.highlightNavOnScroll();
     
     // Expose navigation instance globally for debugging

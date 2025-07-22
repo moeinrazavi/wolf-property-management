@@ -366,9 +366,32 @@ class RentalsAdminManager {
         
         console.log(`Starting edit for listing ${listingId}, field ${fieldName}`);
         
-        // Create input element
-        const input = document.createElement(fieldName === 'description' ? 'textarea' : 'input');
-        input.value = this.getFieldValue(listingId, fieldName, currentValue);
+        // Create appropriate input element based on field type
+        let input;
+        if (fieldName === 'description') {
+            input = document.createElement('textarea');
+            input.style.minHeight = '100px';
+            input.style.resize = 'vertical';
+        } else if (fieldName === 'available_date') {
+            // Create date input for calendar picker
+            input = document.createElement('input');
+            input.type = 'date';
+            // Convert existing value to date format if needed
+            const dateValue = this.parseAvailableDateToISO(this.getFieldValue(listingId, fieldName, currentValue));
+            input.value = dateValue;
+        } else if (fieldName === 'address') {
+            // Create address input with autocomplete
+            input = this.createAddressInput(listingId);
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+        }
+        
+        // Set common input properties
+        if (fieldName !== 'address') {
+            input.value = this.getFieldValue(listingId, fieldName, currentValue);
+        }
+        
         input.style.width = '100%';
         input.style.minWidth = '200px';
         input.style.padding = '8px';
@@ -378,20 +401,30 @@ class RentalsAdminManager {
         input.style.fontSize = window.getComputedStyle(element).fontSize;
         input.style.fontFamily = window.getComputedStyle(element).fontFamily;
         
-        if (fieldName === 'description') {
-            input.style.minHeight = '100px';
-            input.style.resize = 'vertical';
-        }
-        
         // Replace element with input
         element.style.display = 'none';
         element.parentNode.insertBefore(input, element.nextSibling);
         input.focus();
-        input.select();
+        
+        if (input.type !== 'date' && fieldName !== 'address') {
+            input.select();
+        }
         
         // Handle save/cancel
         const saveEdit = () => {
-            const newValue = input.value.trim();
+            let newValue = input.value.trim();
+            
+            // Format date value for display
+            if (fieldName === 'available_date' && newValue) {
+                newValue = this.formatDateForDisplay(newValue);
+            }
+            
+            // Handle address updates
+            if (fieldName === 'address') {
+                this.handleAddressUpdate(listingId, input);
+                return;
+            }
+            
             this.updateListingField(listingId, fieldName, newValue);
             element.style.display = '';
             input.remove();
@@ -412,6 +445,324 @@ class RentalsAdminManager {
                 cancelEdit();
             }
         });
+    }
+
+    /**
+     * Create address input with autocomplete functionality
+     */
+    createAddressInput(listingId) {
+        const listing = this.rentalListings.find(l => l.id === listingId);
+        const currentAddress = listing ? listing.address : '';
+        
+        // Create the input (same style as regular inputs)
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentAddress;
+        input.placeholder = 'Enter property address...';
+        input.autocomplete = 'off';
+        
+        // Create suggestions dropdown (positioned absolutely)
+        const suggestionsContainer = document.createElement('div');
+        suggestionsContainer.style.position = 'absolute';
+        suggestionsContainer.style.top = '100%';
+        suggestionsContainer.style.left = '0';
+        suggestionsContainer.style.right = '0';
+        suggestionsContainer.style.background = 'white';
+        suggestionsContainer.style.border = '1px solid #ddd';
+        suggestionsContainer.style.borderTop = 'none';
+        suggestionsContainer.style.borderRadius = '0 0 4px 4px';
+        suggestionsContainer.style.maxHeight = '200px';
+        suggestionsContainer.style.overflowY = 'auto';
+        suggestionsContainer.style.zIndex = '1000';
+        suggestionsContainer.style.display = 'none';
+        suggestionsContainer.className = 'address-suggestions';
+        
+        // Add debounced address search
+        let searchTimeout;
+        input.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length < 3) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                this.searchAddresses(query, suggestionsContainer, input, listingId);
+            }, 300);
+        });
+        
+        // Setup suggestions container after input is inserted into DOM
+        input.addEventListener('focus', () => {
+            // Position suggestions container relative to the input
+            if (input.parentElement && !suggestionsContainer.parentElement) {
+                // Create a wrapper div for proper positioning
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+                wrapper.style.display = 'inline-block';
+                wrapper.style.width = '100%';
+                
+                // Insert wrapper before input and move input into wrapper
+                input.parentElement.insertBefore(wrapper, input);
+                wrapper.appendChild(input);
+                wrapper.appendChild(suggestionsContainer);
+                
+                // Update suggestions positioning to be right below input
+                suggestionsContainer.style.position = 'absolute';
+                suggestionsContainer.style.top = '100%';
+                suggestionsContainer.style.left = '0';
+                suggestionsContainer.style.right = '0';
+                suggestionsContainer.style.zIndex = '1000';
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        const hideHandler = (e) => {
+            const wrapper = input.parentElement;
+            const isInsideWrapper = wrapper && wrapper.contains(e.target);
+            const isInsideSuggestions = suggestionsContainer.contains(e.target);
+            
+            if (!isInsideWrapper && !isInsideSuggestions) {
+                suggestionsContainer.style.display = 'none';
+            }
+        };
+        
+        document.addEventListener('click', hideHandler);
+        
+        // Store handler reference for cleanup
+        input._hideHandler = hideHandler;
+        
+        // Store suggestion container reference for cleanup
+        input._suggestionsContainer = suggestionsContainer;
+        
+        return input;
+    }
+
+    /**
+     * Search for addresses using geocoding service
+     */
+    async searchAddresses(query, suggestionsContainer, input, listingId) {
+        try {
+            // Use Nominatim (OpenStreetMap) geocoding service - free and no API key required
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us&q=${encodeURIComponent(query + ', Texas, USA')}`
+            );
+            
+            if (!response.ok) {
+                throw new Error('Geocoding service unavailable');
+            }
+            
+            const results = await response.json();
+            this.displayAddressSuggestions(results, suggestionsContainer, input, listingId);
+        } catch (error) {
+            console.warn('Address search failed:', error);
+            // Allow custom input to remain
+            suggestionsContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Display address suggestions
+     */
+    displayAddressSuggestions(results, suggestionsContainer, input, listingId) {
+        suggestionsContainer.innerHTML = '';
+        
+        if (results.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.style.padding = '12px';
+            noResults.style.color = '#666';
+            noResults.style.fontStyle = 'italic';
+            noResults.style.cursor = 'pointer';
+            noResults.textContent = 'No suggestions found - click to use custom address';
+            
+            // Allow clicking to accept custom address
+            noResults.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                suggestionsContainer.style.display = 'none';
+                // Keep the current input value and save it
+                this.handleAddressUpdate(listingId, input);
+            });
+            
+            suggestionsContainer.appendChild(noResults);
+            suggestionsContainer.style.display = 'block';
+            return;
+        }
+        
+        results.forEach(result => {
+            const suggestion = document.createElement('div');
+            suggestion.style.padding = '12px';
+            suggestion.style.cursor = 'pointer';
+            suggestion.style.borderBottom = '1px solid #eee';
+            suggestion.style.transition = 'background-color 0.2s';
+            
+            // Format address
+            const address = this.formatGeocodedAddress(result);
+            suggestion.textContent = address.display;
+            
+            // Hover effect
+            suggestion.addEventListener('mouseenter', () => {
+                suggestion.style.backgroundColor = '#f5f5f5';
+            });
+            
+            suggestion.addEventListener('mouseleave', () => {
+                suggestion.style.backgroundColor = 'white';
+            });
+            
+            // Handle selection
+            suggestion.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                input.value = address.street;
+                
+                // Update related fields
+                const listing = this.rentalListings.find(l => l.id === listingId);
+                if (listing && address.city && address.state && address.zipCode) {
+                    listing.city = address.city;
+                    listing.state = address.state;
+                    listing.zip_code = address.zipCode;
+                    listing.neighborhood = address.neighborhood || address.city;
+                    
+                    // Track these changes
+                    this.trackListingChange(listingId, 'city', address.city);
+                    this.trackListingChange(listingId, 'state', address.state);
+                    this.trackListingChange(listingId, 'zip_code', address.zipCode);
+                    this.trackListingChange(listingId, 'neighborhood', address.neighborhood || address.city);
+                    
+                    // Update display immediately
+                    this.updateDisplayElements(listingId);
+                }
+                
+                suggestionsContainer.style.display = 'none';
+                
+                // Trigger save by calling the address update handler
+                this.handleAddressUpdate(listingId, input);
+            });
+            
+            suggestionsContainer.appendChild(suggestion);
+        });
+        
+        suggestionsContainer.style.display = 'block';
+    }
+
+    /**
+     * Format geocoded address result
+     */
+    formatGeocodedAddress(result) {
+        const addr = result.address || {};
+        
+        const houseNumber = addr.house_number || '';
+        const street = addr.road || addr.street || '';
+        const city = addr.city || addr.town || addr.village || '';
+        const state = addr.state || 'TX';
+        const zipCode = addr.postcode || '';
+        const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || '';
+        
+        const streetAddress = `${houseNumber} ${street}`.trim();
+        const displayAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`.replace(/,\s*,/g, ',').trim();
+        
+        return {
+            street: streetAddress,
+            city: city,
+            state: state,
+            zipCode: zipCode,
+            neighborhood: neighborhood,
+            display: displayAddress
+        };
+    }
+
+    /**
+     * Handle address update after editing
+     */
+    handleAddressUpdate(listingId, input) {
+        const newAddress = input.value.trim();
+        
+        this.updateListingField(listingId, 'address', newAddress);
+        
+        // Clean up event listeners
+        if (input._hideHandler) {
+            document.removeEventListener('click', input._hideHandler);
+        }
+        
+        // Clean up suggestions container and wrapper
+        const wrapper = input.parentElement;
+        if (wrapper && wrapper.style.position === 'relative') {
+            // This is our wrapper, find the original element
+            const element = wrapper.previousSibling;
+            if (element && element.style.display === 'none') {
+                element.style.display = '';
+            }
+            wrapper.remove();
+        } else {
+            // Fallback to old cleanup method
+            if (input._suggestionsContainer && input._suggestionsContainer.parentElement) {
+                input._suggestionsContainer.remove();
+            }
+            
+            const element = input.previousSibling;
+            if (element) {
+                element.style.display = '';
+            }
+            input.remove();
+        }
+    }
+
+    /**
+     * Parse available date to ISO format for date input
+     */
+    parseAvailableDateToISO(dateStr) {
+        if (!dateStr || dateStr === 'Available Now' || dateStr === 'Now') {
+            return '';
+        }
+        
+        // Try to parse various date formats
+        const cleanDate = dateStr.replace(/[^\d\/\-\.]/g, '');
+        
+        // Handle MM/DD/YY or MM/DD/YYYY
+        const mmddyy = cleanDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if (mmddyy) {
+            let year = parseInt(mmddyy[3]);
+            if (year < 100) {
+                year += 2000; // Convert 25 to 2025
+            }
+            const month = mmddyy[1].padStart(2, '0');
+            const day = mmddyy[2].padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Try direct date parsing with local timezone
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed)) {
+            // Use local timezone to avoid off-by-one day issues
+            const year = parsed.getFullYear();
+            const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
+            const day = parsed.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        return '';
+    }
+
+    /**
+     * Format date for display
+     */
+    formatDateForDisplay(isoDate) {
+        if (!isoDate) return 'Available Now';
+        
+        try {
+            // Create date by parsing the ISO string as local date to avoid timezone issues
+            const [year, month, day] = isoDate.split('-').map(Number);
+            const date = new Date(year, month - 1, day); // month is 0-indexed
+            
+            const displayMonth = (date.getMonth() + 1).toString();
+            const displayDay = date.getDate().toString();
+            const displayYear = date.getFullYear().toString().slice(-2);
+            return `${displayMonth}/${displayDay}/${displayYear}`;
+        } catch (error) {
+            return isoDate;
+        }
     }
 
     /**
@@ -451,6 +802,9 @@ class RentalsAdminManager {
             updatedValue = parseFloat(newValue.replace(/[$,]/g, '')) || 0;
         } else if (fieldName === 'square_feet') {
             updatedValue = parseInt(newValue.replace(/[,]/g, '')) || 0;
+        } else if (fieldName === 'available_date') {
+            // Store the formatted value directly for available_date
+            updatedValue = newValue;
         } else if (fieldName === 'bedrooms_bathrooms') {
             const match = newValue.match(/(\d+(?:\.\d+)?)\s*bd?\s*\/\s*(\d+(?:\.\d+)?)\s*ba?/i);
             if (match) {
@@ -542,6 +896,26 @@ class RentalsAdminManager {
             const mapLink = addressElement.querySelector('.map-link');
             const mapLinkHtml = mapLink ? mapLink.outerHTML : '<a href="#" class="map-link">📍 Map</a>';
             addressElement.innerHTML = `${listing.address}, ${listing.city}, ${listing.state} ${listing.zip_code} ${mapLinkHtml}`;
+        }
+
+        const availableDateElement = listingElement.querySelector('[data-field="available_date"]');
+        if (availableDateElement) {
+            availableDateElement.textContent = listing.available_date || 'Available Now';
+        }
+
+        const descriptionElement = listingElement.querySelector('[data-field="description"]');
+        if (descriptionElement) {
+            descriptionElement.textContent = listing.description || '';
+        }
+
+        const appliancesElement = listingElement.querySelector('[data-field="appliances"]');
+        if (appliancesElement) {
+            appliancesElement.textContent = listing.appliances || '';
+        }
+
+        const petPolicyElement = listingElement.querySelector('[data-field="pet_policy"]');
+        if (petPolicyElement) {
+            petPolicyElement.textContent = listing.pet_policy || 'Contact for details';
         }
     }
 
@@ -688,14 +1062,14 @@ class RentalsAdminManager {
             // Create temporary ID for new listing
             const tempId = `temp_${Date.now()}`;
             
-            // Create new listing data
+            // Create new listing data with neutral defaults
             const newListingData = {
                 id: tempId,
                 title: 'New Rental Property',
-                address: '123 Main Street',
-                city: 'Georgetown',
+                address: 'Click to edit address',
+                city: 'City',
                 state: 'TX',
-                zip_code: '78628',
+                zip_code: '',
                 rent_price: 2000.00,
                 square_feet: 1500,
                 bedrooms: 3,
@@ -703,10 +1077,17 @@ class RentalsAdminManager {
                 description: 'Click to edit this property description. Add details about the features, location, and amenities.',
                 appliances: 'Dishwasher, Electric Range, Microwave',
                 pet_policy: 'Contact for pet policy details',
-                available_date: 'Available Now',
+                available_date: (() => {
+                    const futureDate = new Date();
+                    futureDate.setDate(futureDate.getDate() + 30);
+                    const month = futureDate.getMonth() + 1;
+                    const day = futureDate.getDate();
+                    const year = futureDate.getFullYear().toString().slice(-2);
+                    return `${month}/${day}/${year}`;
+                })(),
                 primary_image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
                 primary_image_filename: null,
-                neighborhood: 'Georgetown',
+                neighborhood: '',
                 sort_order: this.rentalListings.length + 1,
                 is_active: true,
                 is_featured: false,

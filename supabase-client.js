@@ -1025,7 +1025,7 @@ class DatabaseService {
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
                         title VARCHAR(255) NOT NULL,
                         address VARCHAR(255) NOT NULL,
-                        city VARCHAR(100) DEFAULT 'Georgetown',
+                        city VARCHAR(100),
                         state VARCHAR(10) DEFAULT 'TX',
                         zip_code VARCHAR(20),
                         rent_price DECIMAL(8, 2) NOT NULL,

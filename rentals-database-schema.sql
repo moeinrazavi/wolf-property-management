@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS rental_listings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title VARCHAR(500) NOT NULL,
     address VARCHAR(500) NOT NULL,
-    city VARCHAR(200) DEFAULT 'Georgetown',
+    city VARCHAR(200),
     state VARCHAR(50) DEFAULT 'TX',
     zip_code VARCHAR(20),
     rent_price DECIMAL(10, 2) NOT NULL,

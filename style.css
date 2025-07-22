@@ -425,7 +425,7 @@ section {
 
 /* Enhanced Hero Section with Improved Layout */
 .hero {
-    background: linear-gradient(135deg, rgba(26, 35, 50, 0.7), rgba(26, 35, 50, 0.5)), 
+    background: linear-gradient(135deg, rgba(26, 35, 50, 0.85), rgba(26, 35, 50, 0.75)), 
                 url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
     background-size: cover;
     background-position: center;
@@ -447,7 +447,9 @@ section {
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+    background: 
+        radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.4) 70%, rgba(0, 0, 0, 0.6) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
     z-index: 1;
 }
 
@@ -455,8 +457,13 @@ section {
     position: relative;
     z-index: 2;
     max-width: 1000px;
-    padding: 0 24px;
+    padding: 40px 24px;
     animation: fadeInUp 1s ease-out;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes fadeInUp {
@@ -473,7 +480,10 @@ section {
 .hero h1 {
     color: var(--white);
     margin-bottom: 20px;
-    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.8),
+        0 4px 8px rgba(0, 0, 0, 0.6),
+        0 8px 16px rgba(0, 0, 0, 0.4);
     font-size: clamp(3rem, 6vw, 5rem);
     font-weight: 800;
     line-height: 1.1;
@@ -486,7 +496,9 @@ section {
     background: linear-gradient(90deg, var(--secondary-color), var(--accent-color));
     margin: 28px auto;
     border-radius: 3px;
-    box-shadow: 0 3px 12px rgba(255, 107, 53, 0.4);
+    box-shadow: 
+        0 3px 12px rgba(255, 107, 53, 0.4),
+        0 0 0 2px rgba(255, 255, 255, 0.2);
 }
 
 .hero h2 {
@@ -496,19 +508,24 @@ section {
     color: var(--white);
     letter-spacing: 3px;
     text-transform: uppercase;
-    opacity: 0.95;
     line-height: 1.3;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.8),
+        0 4px 8px rgba(0, 0, 0, 0.6);
 }
 
 .hero p {
     font-size: clamp(1.125rem, 2.5vw, 1.375rem);
     margin-bottom: 40px;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.95);
     max-width: 700px;
     margin-left: auto;
     margin-right: auto;
     line-height: 1.7;
     font-weight: 400;
+    text-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .hero-buttons {
